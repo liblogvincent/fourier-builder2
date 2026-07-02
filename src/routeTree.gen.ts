@@ -14,6 +14,8 @@ import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as EvalsRouteImport } from './routes/evals'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContentRouteImport } from './routes/content'
+import { Route as MediaRouteImport } from './routes/media'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent-chat'
 import { Route as CampaignsIdHistoryRouteImport } from './routes/campaigns.$id.history'
@@ -21,6 +23,16 @@ import { Route as CampaignsIdHistoryRouteImport } from './routes/campaigns.$id.h
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContentRoute = ContentRouteImport.update({
+  id: '/content',
+  path: '/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SkillsRoute = SkillsRouteImport.update({
@@ -62,7 +74,9 @@ const CampaignsIdHistoryRoute = CampaignsIdHistoryRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRouteWithChildren
+  '/content': typeof ContentRoute
   '/evals': typeof EvalsRoute
+  '/media': typeof MediaRoute
   '/skills': typeof SkillsRoute
   '/workspace': typeof WorkspaceRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
@@ -72,7 +86,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRouteWithChildren
+  '/content': typeof ContentRoute
   '/evals': typeof EvalsRoute
+  '/media': typeof MediaRoute
   '/skills': typeof SkillsRoute
   '/workspace': typeof WorkspaceRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
@@ -83,7 +99,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRouteWithChildren
+  '/content': typeof ContentRoute
   '/evals': typeof EvalsRoute
+  '/media': typeof MediaRoute
   '/skills': typeof SkillsRoute
   '/workspace': typeof WorkspaceRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
@@ -95,7 +113,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/campaigns'
+    | '/content'
     | '/evals'
+    | '/media'
     | '/skills'
     | '/workspace'
     | '/api/agent-chat'
@@ -105,7 +125,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/campaigns'
+    | '/content'
     | '/evals'
+    | '/media'
     | '/skills'
     | '/workspace'
     | '/api/agent-chat'
@@ -115,7 +137,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/campaigns'
+    | '/content'
     | '/evals'
+    | '/media'
     | '/skills'
     | '/workspace'
     | '/api/agent-chat'
@@ -126,7 +150,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CampaignsRoute: typeof CampaignsRouteWithChildren
+  ContentRoute: typeof ContentRoute
   EvalsRoute: typeof EvalsRoute
+  MediaRoute: typeof MediaRoute
   SkillsRoute: typeof SkillsRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
@@ -139,6 +165,20 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/content': {
+      id: '/content'
+      path: '/content'
+      fullPath: '/content'
+      preLoaderRoute: typeof ContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/skills': {
@@ -210,7 +250,9 @@ const CampaignsRouteWithChildren = CampaignsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CampaignsRoute: CampaignsRouteWithChildren,
+  ContentRoute: ContentRoute,
   EvalsRoute: EvalsRoute,
+  MediaRoute: MediaRoute,
   SkillsRoute: SkillsRoute,
   WorkspaceRoute: WorkspaceRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
