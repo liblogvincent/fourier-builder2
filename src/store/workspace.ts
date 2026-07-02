@@ -48,6 +48,7 @@ interface State {
   proposalDisposition: "pending" | "promoted" | "rejected";
   agentBusy: string | null;
   agentError: string | null;
+  planMode: boolean;
 
   brief: Brief;
   plan: typeof defaultPlan;
@@ -64,6 +65,7 @@ interface State {
   decideGate: (gate: GateId, verdict: GateDecision["verdict"], note?: string) => void;
   applyFix: (variantId: string) => void;
   setProposalDisposition: (d: "promoted" | "rejected") => void;
+  setPlanMode: (on: boolean) => void;
   advance: () => Promise<void>;
   retryPhase: (phase: Phase) => Promise<void>;
   reset: () => void;
@@ -114,6 +116,7 @@ export const useWorkspace = create<State>((set, get) => ({
   proposalDisposition: "pending",
   agentBusy: null,
   agentError: null,
+  planMode: true,
 
   brief: defaultBrief,
   plan: defaultPlan,
@@ -138,6 +141,7 @@ export const useWorkspace = create<State>((set, get) => ({
       gateDecisions: {},
       appliedFixes: new Set(),
       proposalDisposition: "pending",
+      planMode: true,
       // reset working artifacts to the camp_04 fixture shape but with the new brief id
       plan: { ...defaultPlan, briefId: b.id },
       variants: defaultVariants,
@@ -205,6 +209,8 @@ export const useWorkspace = create<State>((set, get) => ({
 
   setProposalDisposition: (d) => set({ proposalDisposition: d }),
 
+  setPlanMode: (on) => set({ planMode: on }),
+
   advance: async () => {
     const { phase, runMode } = get();
     const i = PHASE_ORDER.indexOf(phase);
@@ -244,6 +250,7 @@ export const useWorkspace = create<State>((set, get) => ({
       appliedFixes: new Set(),
       proposalDisposition: "pending",
       demoMode: false,
+      planMode: true,
       agentBusy: null,
       agentError: null,
     }),
