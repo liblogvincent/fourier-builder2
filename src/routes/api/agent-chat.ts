@@ -1,17 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { streamText, type UIMessage, convertToModelMessages } from "ai";
 import { createAiGatewayProvider, resolveGatewayConfig } from "@/lib/ai-gateway.server";
+import {
+  buildOrchestratorSystemPrompt,
+  buildOrchestratorContext,
+  type ContextSnapshot,
+} from "@/lib/orchestrator-prompt";
+
+type ContextBody = {
+  campaign?: string;
+  product?: string;
+  market?: string;
+  locales?: string[];
+  currentPhase?: string;
+  phaseLabel?: string;
+  gatesPassed?: string[];
+  gatesPending?: string[];
+  variantCount?: number;
+  qaSummary?: string;
+  lastRationale?: string;
+  agentBusy?: string | null;
+  runMode?: string;
+};
 
 type Body = {
   messages: UIMessage[];
-  context?: {
-    campaign?: string;
-    phase?: string;
-    market?: string;
-    locales?: string[];
-    agentBusy?: string | null;
-    lastRationale?: string;
-  };
+  context?: ContextBody;
 };
 
 export const Route = createFileRoute("/api/agent-chat")({
@@ -31,23 +45,25 @@ export const Route = createFileRoute("/api/agent-chat")({
 
         const gateway = createAiGatewayProvider(config);
 
-        const system = `You are the **Orchestrator**, an AI agent that runs paid-social campaigns for Hilti. You coordinate six specialist agents: Strategy, Content, Localization, QA Judge, Rollout, Insights.
+        const snapshot: ContextSnapshot = {
+          campaign: context?.campaign ?? "n/a",
+          product: context?.product ?? "n/a",
+          market: context?.market ?? "n/a",
+          locales: context?.locales ?? [],
+          currentPhase: context?.currentPhase ?? "brief",
+          phaseLabel: context?.phaseLabel ?? "Brief intake — campaign context loaded",
+          gatesPassed: context?.gatesPassed ?? [],
+          gatesPending: context?.gatesPending ?? [],
+          variantCount: context?.variantCount ?? 0,
+          qaSummary: context?.qaSummary ?? "n/a",
+          lastRationale: context?.lastRationale ?? "none",
+          agentBusy: context?.agentBusy ?? null,
+          runMode: context?.runMode ?? "n/a",
+        };
 
-Your job is to be the user's interface — plan, steer, and explain. Be terse (max 4 short lines). When the user asks you to *do* something (plan, generate, localize, QA, roll out, approve), narrate what will happen and end with a single-line action tag on its own line, using EXACTLY one of:
+        const system = `${buildOrchestratorSystemPrompt()}
 
-[ACTION:ADVANCE]           — run the next phase
-[ACTION:APPROVE:H1]        — approve gate H1 (or H2, H-C, H-legal, H3, H4)
-[ACTION:LOAD:<campaignId>] — switch to a different campaign
-[ACTION:RESET]             — reset current campaign to brief
-
-Never invent action tags outside that list. If the user is just chatting or asking a question, answer without an action tag.
-
-Current campaign context:
-- campaign: ${context?.campaign ?? "n/a"}
-- market: ${context?.market ?? "n/a"} · locales: ${(context?.locales ?? []).join(", ")}
-- current phase: ${context?.phase ?? "brief"}
-- agent working now: ${context?.agentBusy ?? "none"}
-- last agent decision: ${context?.lastRationale ?? "none"}`;
+${buildOrchestratorContext(snapshot)}`;
 
         const modelId = process.env.LLM_MODEL || "claude-opus-4-8";
 
