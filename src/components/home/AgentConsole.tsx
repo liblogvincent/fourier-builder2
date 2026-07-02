@@ -6,6 +6,7 @@ import { useWorkspace, phaseLabel } from "@/store/workspace";
 import { listCampaigns } from "@/lib/persistence";
 import type { GateId } from "@/types";
 import { Send, Sparkles } from "lucide-react";
+import { FileUpload } from "@/components/shared/FileUpload";
 
 const STARTERS = [
   "Plan the Nuron launch for DE, AT, and CH",
@@ -74,7 +75,7 @@ export function AgentConsole() {
     contextRef.current = context;
   }, [context]);
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, append, status, error } = useChat({
     transport,
   });
 
@@ -118,6 +119,17 @@ export function AgentConsole() {
     if (!t || busy) return;
     setInput("");
     void sendMessage({ text: t });
+  };
+
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  const handleFilesSelected = (files: File[]) => {
+    setUploadedFiles(files);
+    const names = files.map((f) => f.name).join(", ");
+    void append({
+      role: "user",
+      content: `📎 Uploaded: ${names}. Analyze these files and propose skills if relevant.`,
+    });
   };
 
   return (
@@ -182,6 +194,10 @@ export function AgentConsole() {
         )}
 
         <div ref={endRef} />
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+        <FileUpload onFilesSelected={handleFilesSelected} />
       </div>
 
       <form
