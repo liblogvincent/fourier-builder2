@@ -133,7 +133,7 @@ function LeftSidebar({ path, onWorkspace, onContent, onMedia }: {
     );
   }
 
-  if (showContent) {
+  if (showContentOutline) {
     return (
       <aside className="hidden w-56 flex-col border-r border-border bg-white/50 md:flex">
         <div className="flex items-center border-b border-border p-4">
@@ -155,7 +155,7 @@ function LeftSidebar({ path, onWorkspace, onContent, onMedia }: {
     );
   }
 
-  if (showMedia) {
+  if (showMediaNav) {
     return (
       <aside className="hidden w-56 flex-col border-r border-border bg-white/50 md:flex">
         <div className="flex items-center border-b border-border p-4">
