@@ -85,8 +85,8 @@ export function AgentDiscussion() {
         "change": `Let me walk through the market-specific changes. For de-CH (Switzerland German), I swapped safety-led messaging for durability-led because CH contractor segments over-index on heritage and longevity cues (CH_Market_Heritage_Playbook_v2). For fr-CH, I did a full French translation while preserving SKU codes. de-AT is lexically identical to de-DE with no changes needed.`,
 
         "qa report": `Here's the QA summary: 15 of 16 variants passed all checks. Variant v_1_de-DE was flagged for using "revolutionäre" which is on the Hilti brand-voice blacklist for iterative hardware updates. The suggested replacement is "leistungsstarke" (high-performance). Would you like me to auto-fix it?`,
+      };
 
-      const q = text.toLowerCase();
       const q = text.toLowerCase();
       let response = "That's a great question. Let me look into the details and get back to you with specifics. In the meantime, would you like to review any other aspect of the ";
       response += phase === "H1" ? "plan?" : phase === "content" ? "creative concepts?" : "output?";
