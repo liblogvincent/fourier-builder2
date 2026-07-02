@@ -41,6 +41,41 @@ function Home() {
           </p>
         </header>
 
+        {/* Stats dashboard */}
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            {
+              label: "Gates pending",
+              value: phase === "H1" || phase === "H2" || phase === "H-C" || phase === "H-legal" || phase === "H3" || phase === "H4" ? "1" : "0",
+              trend: "requires action",
+            },
+            { label: "Active campaign", value: brief.campaign.split(" — ")[0], trend: phase },
+            {
+              label: "Skills in registry",
+              value: "4",
+              trend: "+1 from camp_03",
+            },
+            {
+              label: "Eval trend",
+              value: "↓ cost",
+              trend: "4 campaigns tracked",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-sm border border-border bg-white p-3"
+            >
+              <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                {stat.label}
+              </p>
+              <p className="mt-1 font-mono text-sm font-bold">{stat.value}</p>
+              <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">
+                {stat.trend}
+              </p>
+            </div>
+          ))}
+        </div>
+
         <CampaignProgressBar
           phase={phase}
           title={brief.campaign}

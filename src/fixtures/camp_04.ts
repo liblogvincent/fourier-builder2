@@ -73,7 +73,8 @@ export const plan: CampaignPlan = {
     { id: "n_plan", label: "Strategy plan", kind: "agent", agent: "strategy", status: "done", depends_on: ["n_brief"] },
     { id: "n_h1", label: "H1: Plan approval", kind: "gate", gate: "H1", status: "pending", depends_on: ["n_plan"] },
     { id: "n_content", label: "Content generation", kind: "agent", agent: "content", status: "pending", depends_on: ["n_h1"] },
-    { id: "n_locale", label: "Localization", kind: "agent", agent: "localization", status: "pending", depends_on: ["n_content"] },
+    { id: "n_h_creative", label: "H-C: Creative approval", kind: "gate", gate: "H-C", status: "pending", depends_on: ["n_content"] },
+    { id: "n_locale", label: "Localization", kind: "agent", agent: "localization", status: "pending", depends_on: ["n_h_creative"] },
     { id: "n_qa", label: "QA + brand judge", kind: "agent", agent: "qa", status: "pending", depends_on: ["n_locale"] },
     { id: "n_h2", label: "H2: QA approval", kind: "gate", gate: "H2", status: "pending", depends_on: ["n_qa"] },
     { id: "n_h_legal", label: "H-legal: EU compliance", kind: "gate", gate: "H-legal", status: "pending", depends_on: ["n_h2"] },
@@ -129,6 +130,18 @@ export const variants: AdVariant[] = (() => {
         primary_text: baseBodies[locale].replace("{ADJ}", adj),
         cta: ctas[locale],
         imageRef: "siw-6at-hero",
+        characterCounts: {
+          headline: baseHeadlines[i].length,
+          body: baseBodies[locale].replace("{ADJ}", adj).length,
+          cta: ctas[locale].length,
+        },
+        utmParams: {
+          utm_source: "meta",
+          utm_medium: "paid_social",
+          utm_campaign: `siw6at_dach_q4_2026`,
+          utm_content: `v_${i + 1}_${locale}`,
+          utm_term: "hilti_akku",
+        },
       });
     }
   }
@@ -165,6 +178,8 @@ export const qaResults: QAResult[] = variants.map((v) => {
       { rule: "cta.in_approved_list", result: "pass" },
       { rule: "image.has_safety_pictogram", result: "pass" },
       { rule: "utm.well_formed", result: "pass" },
+      { rule: "Landing page URL resolves", result: "pass", detail: `https://hilti.com/${v.locale}/store/siw-6at-a22` },
+      { rule: "UTM params present", result: "pass", detail: `utm_source=meta&utm_medium=paid_social&utm_campaign=siw6at_dach_q4_2026&utm_content=${v.id}` },
     ],
     judge: isFault
       ? {
@@ -271,6 +286,27 @@ export const rationaleScript: Record<string, DecisionRationale> = {
       "DACH_Technical_Claims_Playbook",
     ],
     timestamp: "14:09:30",
+    status: "decided",
+  },
+  h_creative: {
+    id: "r_h_creative",
+    agent: "content",
+    decided:
+      "Creative review complete — 4 ad concepts approved for localization across DACH markets.",
+    why: [
+      "Headlines span torque, platform, precision, and smart-tool angles — covers full buyer value spectrum",
+      "CTAs aligned to DACH approved list ('Händler finden' for de-*, 'Trouver un revendeur' for fr-CH)",
+      "Visual concept uses jobsite authenticity per Brand Voice v4.2",
+    ],
+    alternatives: [
+      {
+        option: "Add a 5th 'price/value' concept",
+        rejected_because: "Hilti Brand Voice prohibits price-led messaging in paid-social. Deploy via email channel instead.",
+      },
+    ],
+    confidence: 0.94,
+    knowledge_cited: ["Hilti_Brand_Voice_v4.2", "DACH_CTA_Approved_List_v3"],
+    timestamp: "14:05:45",
     status: "decided",
   },
   content: {

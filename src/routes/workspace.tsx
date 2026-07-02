@@ -11,6 +11,7 @@ import { LiveTile, ValueReadout } from "@/components/timeline/ValueReadout";
 import { InsightProposal } from "@/components/timeline/InsightProposal";
 import { GatePanel } from "@/components/gates/GatePanel";
 import type { Phase } from "@/types";
+import { exportCampaign, downloadJSON } from "@/lib/export";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/workspace")({
 });
 
 const ORDER: Phase[] = [
-  "brief", "planning", "H1", "content", "localization", "qa",
+  "brief", "planning", "H1", "content", "H-C", "localization", "qa",
   "H2", "H-legal", "rollout", "H3", "live", "H4", "done",
 ];
 const reached = (phase: Phase, target: Phase): boolean =>
@@ -35,6 +36,7 @@ const reached = (phase: Phase, target: Phase): boolean =>
 
 function Workspace() {
   const phase = useWorkspace((s) => s.phase);
+  const fullState = useWorkspace((s) => s);
 
   return (
     <WorkspaceShell>
@@ -45,6 +47,7 @@ function Workspace() {
         {phase === "H1" && <GatePanel gate="H1" />}
 
         {reached(phase, "content") && <ContentSection />}
+        {phase === "H-C" && <GatePanel gate="H-C" />}
         {reached(phase, "localization") && <LocaleDiff />}
         {reached(phase, "qa") && <QaPanel />}
         {phase === "H2" && <GatePanel gate="H2" />}
@@ -57,7 +60,22 @@ function Workspace() {
         {reached(phase, "H4") && <InsightProposal />}
         {phase === "H4" && <GatePanel gate="H4" />}
 
-        {phase === "done" && <ValueReadout />}
+        {phase === "done" && (
+          <>
+            <ValueReadout />
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={() => {
+                  const json = exportCampaign(fullState);
+                  downloadJSON(json, `${fullState.brief.id}_export.json`);
+                }}
+                className="rounded-sm border-2 border-hilti bg-hilti px-6 py-3 text-sm font-bold text-white shadow-lg transition-colors hover:bg-hilti/90"
+              >
+                ⬇ Export campaign as JSON
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </WorkspaceShell>
   );

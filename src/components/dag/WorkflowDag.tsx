@@ -6,6 +6,7 @@ const phaseToActiveNode = (phase: Phase): string | null => {
   if (phase === "planning") return "n_plan";
   if (phase === "H1") return "n_h1";
   if (phase === "content") return "n_content";
+  if (phase === "H-C") return "n_h_creative";
   if (phase === "localization") return "n_locale";
   if (phase === "qa") return "n_qa";
   if (phase === "H2") return "n_h2";
@@ -22,6 +23,7 @@ const phaseOrder: Phase[] = [
   "planning",
   "H1",
   "content",
+  "H-C",
   "localization",
   "qa",
   "H2",
@@ -49,7 +51,8 @@ export function WorkflowDag() {
     const map: Record<string, Phase> = {
       n_brief: "planning",
       n_plan: "H1",
-      n_content: "localization",
+      n_content: "H-C",
+      n_h_creative: "localization",
       n_locale: "qa",
       n_qa: "H2",
       n_rollout: "H3",

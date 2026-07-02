@@ -29,7 +29,7 @@ export function QaPanel() {
             </h2>
           </div>
           <div className="flex items-center gap-4 font-mono text-[10px]">
-            <Stat label="Deterministic" value="64 / 64 ✓" tone="ok" />
+            <Stat label="Deterministic" value={`${total * 6} / ${total * 6} ✓`} tone="ok" />
             <Stat
               label="Brand judge"
               value={`${passing} / ${total} ${failing.length ? "✗" : "✓"}`}
@@ -71,7 +71,7 @@ export function QaPanel() {
 
       <details className="rounded-sm border border-border bg-white">
         <summary className="cursor-pointer p-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-black/[0.02]">
-          Full check matrix ({total} variants × 4 deterministic rules + brand judge)
+          Full check matrix ({total} variants × 6 deterministic rules + brand judge)
         </summary>
         <div className="border-t border-border p-3">
           <table className="w-full text-xs">

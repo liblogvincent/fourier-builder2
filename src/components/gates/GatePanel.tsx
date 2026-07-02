@@ -13,8 +13,14 @@ const GATE_COPY: Record<
   },
   H2: {
     title: "Gate H2 · QA approval",
-    body: "QA agent flagged 1 of 16 variants for a brand-voice violation. Auto-fix available.",
-    reviewerHint: "Approve once the flagged variant is auto-fixed or accepted as-is.",
+    body: "QA agent completed 96 checks across 16 variants. Brand-voice judge flagged 1 of 16 for a hype-adjective violation. Auto-fix available.",
+    reviewerHint: "Review the flagged v_1_de-DE variant. Apply auto-fix or accept as-is before approving.",
+  },
+  "H-C": {
+    title: "Gate H-C · Creative Approval",
+    body: "Content agent generated 4 ad concepts. Review the finished creative (copy + visuals) before localization and rollout.",
+    reviewerHint:
+      "Approve creative direction, messaging, and visual approach. Changes here prevent rework across 4 locales.",
   },
   "H-legal": {
     title: "Gate H-legal · EU compliance review",

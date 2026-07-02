@@ -74,6 +74,7 @@ const PHASE_ORDER: Phase[] = [
   "planning",
   "H1",
   "content",
+  "H-C",
   "localization",
   "qa",
   "H2",
@@ -98,6 +99,7 @@ const FIXTURE_RATIONALE: Partial<Record<Phase, DecisionRationale>> = {
   localization: rationaleScript.localization,
   qa: rationaleScript.qa,
   "H-legal": rationaleScript.h_legal,
+  "H-C": rationaleScript.h_creative,
   rollout: rationaleScript.rollout,
   H4: rationaleScript.insights,
 };
@@ -214,7 +216,7 @@ export const useWorkspace = create<State>((set, get) => ({
     await executePhase(next, runMode, get, set);
 
     if (get().demoMode) {
-      const isGate = next === "H1" || next === "H2" || next === "H-legal" || next === "H3" || next === "H4";
+      const isGate = next === "H1" || next === "H2" || next === "H-C" || next === "H-legal" || next === "H3" || next === "H4";
       const delay = isGate ? 2200 : runMode === "live" ? 800 : 1600;
       setTimeout(() => {
         if (!get().demoMode) return;
@@ -567,8 +569,8 @@ function anyBrief(b: Brief) {
   };
 }
 
-export const isGatePhase = (p: Phase): p is "H1" | "H2" | "H-legal" | "H3" | "H4" =>
-  p === "H1" || p === "H2" || p === "H-legal" || p === "H3" || p === "H4";
+export const isGatePhase = (p: Phase): p is "H1" | "H2" | "H-C" | "H-legal" | "H3" | "H4" =>
+  p === "H1" || p === "H2" || p === "H-C" || p === "H-legal" || p === "H3" || p === "H4";
 
 export const phaseLabel = (p: Phase): string =>
   ({
@@ -576,6 +578,7 @@ export const phaseLabel = (p: Phase): string =>
     planning: "Strategy agent planning",
     H1: "Gate H1: Plan approval",
     content: "Content agent generating",
+    "H-C": "Gate H-C: Creative approval",
     localization: "Localization agent fanning out",
     qa: "QA + brand judge running",
     H2: "Gate H2: QA approval",

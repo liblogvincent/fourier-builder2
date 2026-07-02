@@ -6,10 +6,17 @@ const LOCALES = ["de-DE", "de-AT", "de-CH", "fr-CH"] as const;
 
 export function ContentSection() {
   const variants = useWorkspace((s) => s.variants);
+  const CHANNELS = ["all", "meta", "linkedin", "google"] as const;
   const [selectedLocale, setSelectedLocale] =
     useState<(typeof LOCALES)[number]>("de-DE");
+  const [selectedChannel, setSelectedChannel] =
+    useState<(typeof CHANNELS)[number]>("all");
 
-  const filteredVariants = variants.filter((v) => v.locale === selectedLocale);
+  const filteredVariants = variants.filter((v) => {
+    const localeMatch = v.locale === selectedLocale;
+    const channelMatch = selectedChannel === "all" || v.channel === selectedChannel;
+    return localeMatch && channelMatch;
+  });
 
   return (
     <section className="space-y-3">
@@ -27,6 +34,31 @@ export function ContentSection() {
         </span>
       </header>
 
+      {/* Channel filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {CHANNELS.map((channel) => {
+          const count =
+            channel === "all"
+              ? variants.length
+              : variants.filter((v) => v.channel === channel).length;
+          const active = selectedChannel === channel;
+          return (
+            <button
+              key={channel}
+              onClick={() => setSelectedChannel(channel)}
+              className={`rounded-sm border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+                active
+                  ? "border-hilti bg-hilti/10 text-hilti font-bold"
+                  : "border-border bg-white text-muted-foreground hover:bg-black/5"
+              }`}
+            >
+              {channel === "all" ? "All" : channel} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Locale tabs */}
       <div className="flex flex-wrap gap-2">
         {LOCALES.map((locale) => {
           const count = variants.filter((v) => v.locale === locale).length;

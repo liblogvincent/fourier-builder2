@@ -2,6 +2,24 @@ import { useWorkspace, phaseLabel } from "@/store/workspace";
 import { RationaleCard } from "./RationaleCard";
 import { AgentRoster } from "./AgentRoster";
 import { useEffect, useRef } from "react";
+import type { Phase } from "@/types";
+
+const PHASE_LOG_LABELS: { phase: Phase; kind: "agent" | "gate" }[] = [
+  { phase: "brief", kind: "agent" },
+  { phase: "planning", kind: "agent" },
+  { phase: "H1", kind: "gate" },
+  { phase: "content", kind: "agent" },
+  { phase: "H-C", kind: "gate" },
+  { phase: "localization", kind: "agent" },
+  { phase: "qa", kind: "agent" },
+  { phase: "H2", kind: "gate" },
+  { phase: "H-legal", kind: "gate" },
+  { phase: "rollout", kind: "agent" },
+  { phase: "H3", kind: "gate" },
+  { phase: "live", kind: "agent" },
+  { phase: "H4", kind: "gate" },
+  { phase: "done", kind: "agent" },
+];
 
 export function PartnerRail() {
   const stream = useWorkspace((s) => s.rationaleStream);
@@ -19,9 +37,67 @@ export function PartnerRail() {
     phase === "qa" ||
     phase === "rollout";
 
+  const phaseIdx = PHASE_LOG_LABELS.findIndex((p) => p.phase === phase);
+
   return (
     <>
       <AgentRoster />
+
+      {/* Agent Log — live progress step list */}
+      <div className="border-b border-border bg-white px-4 py-3">
+        <div className="mb-2 flex items-center gap-2">
+          <div className="size-1.5 animate-pulse rounded-full bg-hilti" />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest">
+            Agent Log
+          </span>
+        </div>
+        <div className="space-y-0.5">
+          {PHASE_LOG_LABELS.map(({ phase: p, kind }, i) => {
+            const isDone = i < phaseIdx;
+            const isActive = i === phaseIdx;
+            const isFuture = i > phaseIdx;
+            const label = phaseLabel(p);
+            const isGate = kind === "gate";
+            return (
+              <div
+                key={p}
+                className={`flex items-center gap-2 rounded-sm px-2 py-1 text-[10px] transition-colors ${
+                  isActive ? "bg-hilti/10" : ""
+                }`}
+              >
+                <div
+                  className={`flex size-4 shrink-0 items-center justify-center rounded-full ${
+                    isDone
+                      ? "bg-emerald text-white"
+                      : isActive
+                        ? "bg-hilti text-white animate-pulse"
+                        : "bg-black/10 text-muted-foreground"
+                  }`}
+                >
+                  {isDone ? (
+                    <span className="text-[8px]">✓</span>
+                  ) : isActive ? (
+                    <span className="text-[8px]">●</span>
+                  ) : (
+                    <span className="text-[8px]">○</span>
+                  )}
+                </div>
+                <span
+                  className={`font-mono truncate ${
+                    isDone
+                      ? "text-emerald line-through"
+                      : isActive
+                        ? "font-bold text-hilti"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {isGate ? `⚑ ${label}` : label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="flex items-center gap-2 border-b border-border bg-white px-4 py-2">
         <div className="size-1.5 rounded-full bg-hilti" />

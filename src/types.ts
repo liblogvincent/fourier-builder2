@@ -65,6 +65,8 @@ export interface AdVariant {
   primary_text: string;
   cta: string;
   imageRef: string;
+  characterCounts: { headline: number; body: number; cta: number };
+  utmParams: Record<string, string>;
 }
 
 export interface LocaleDiffEntry {
@@ -76,7 +78,7 @@ export interface LocaleDiffEntry {
 
 export interface DeterministicCheck {
   rule: string;
-  result: "pass" | "fail";
+  result: "pass" | "warn" | "fail";
   detail?: string;
 }
 
@@ -150,6 +152,7 @@ export type Phase =
   | "planning"
   | "H1"
   | "content"
+  | "H-C"
   | "localization"
   | "qa"
   | "H2"
