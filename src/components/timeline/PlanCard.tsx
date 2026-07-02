@@ -2,7 +2,10 @@ import { useWorkspace } from "@/store/workspace";
 import { exportCampaign, downloadJSON } from "@/lib/export";
 import { openPptxInNewTab } from "@/lib/html-pptx";
 
+import { useState } from "react";
+
 export function PlanCard() {
+  const [open, setOpen] = useState(false);
   const brief = useWorkspace((s) => s.brief);
   const plan = useWorkspace((s) => s.plan);
   const variants = useWorkspace((s) => s.variants);
@@ -44,23 +47,25 @@ export function PlanCard() {
 
   return (
     <section className="rounded-sm border border-border bg-white shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      {/* Collapsible header */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-black/[0.01]"
+      >
         <div className="flex items-center gap-2">
           <span className="rounded-sm bg-foreground px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white">
             CampaignPlan
           </span>
           <span className="font-mono text-[10px] text-muted-foreground">
-            {plan.id} · {plan.nodes.length} nodes
+            {plan.id} · {plan.nodes.length} nodes · {(plan.rationale.confidence * 100).toFixed(0)}% conf
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-emerald">
-            Strategy agent · {(plan.rationale.confidence * 100).toFixed(0)}% conf
-          </span>
-        </div>
-      </div>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          {open ? "Collapse −" : "Expand +"}
+        </span>
+      </button>
 
+      {open && (<>
       {/* Revision banner */}
       {isRevising && (
         <div className="border-b border-hilti/20 bg-[color-mix(in_oklab,var(--hilti),white_90%)] px-4 py-3">
@@ -217,6 +222,7 @@ export function PlanCard() {
           JSON: full audit trail · Presentation: 5-slide H1 approval deck
         </span>
       </div>
+      </>)}
     </section>
   );
 }

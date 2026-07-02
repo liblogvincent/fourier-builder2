@@ -16,7 +16,7 @@ export function BriefCard() {
   const phase = useWorkspace((s) => s.phase);
   const advance = useWorkspace((s) => s.advance);
   const loadBrief = useWorkspace((s) => s.loadBrief);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [structured, setStructured] = useState(false);
 
