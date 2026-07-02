@@ -8,10 +8,10 @@ import type { GateId } from "@/types";
 import { Send, Sparkles } from "lucide-react";
 
 const STARTERS = [
-  "Plan the Nuron launch for DE, AT, and CH",
+  "TE 70, 10% off, DACH, €50k, Q4, target contractors",
+  "Plan a battery+charger bundle for electricians in France",
   "What's blocking this campaign?",
   "Run the next step",
-  "Approve the current gate",
 ];
 
 const ACTION_RE = /\[ACTION:([A-Z_]+)(?::([^\]]+))?\]/g;
@@ -88,6 +88,27 @@ export function AgentConsole() {
       const arg = m[2];
       if (kind === "ADVANCE") void advance();
       else if (kind === "APPROVE" && arg) decideGate(arg as GateId, "approved", "Approved via Orchestrator");
+      else if (kind === "STRUCTURE_BRIEF" && arg) {
+        try {
+          const parsed = JSON.parse(arg);
+          loadBrief({
+            id: `brief_${Date.now()}`,
+            campaign: parsed.campaign || "New Campaign",
+            product: parsed.product || "",
+            market: parsed.market || "DACH",
+            audience: parsed.audience || "",
+            objective: parsed.objective || "",
+            channels: parsed.channels || ["meta"],
+            locales: parsed.locales || ["de-DE"],
+            budget_usd: parsed.budget_usd || 0,
+            assumptions: parsed.assumptions || [],
+          });
+          void navigate({ to: "/workspace" });
+        } catch {
+          // If JSON parse fails, still navigate
+          void navigate({ to: "/workspace" });
+        }
+      }
       else if (kind === "LOAD" && arg) {
         const target = listCampaigns().find((b) => b.id === arg || b.id.endsWith(arg));
         if (target) {

@@ -2,6 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { useWorkspace } from "@/store/workspace";
 import { useMemo, useState } from "react";
+import {
+  brief as refBrief,
+  plan as refPlan,
+  variants as refVariants,
+  qaResults as refQa,
+  connectorCalls as refConn,
+  rationaleScript,
+} from "@/fixtures/camp_04";
 import type { ConnectorCall, QAResult } from "@/types";
 
 export const Route = createFileRoute("/media")({
@@ -23,73 +31,92 @@ function MediaDashboard() {
   const variants = useWorkspace((s) => s.variants);
   const rationaleStream = useWorkspace((s) => s.rationaleStream);
 
-  const strategyRationale = useMemo(
+  const effectiveStrategyRationale = useMemo(
     () => rationaleStream.filter((r) => r.agent === "strategy").at(-1),
     [rationaleStream],
   );
 
-  // Guard: no active campaign
-  if (phase === "brief" && brief.campaign === "New Campaign") {
+  // Reference template mode — use camp_04 fixture when user's campaign has no media data
+  const hasMediaData = connectorCalls.length > 0 || qaResults.length > 0;
+  const [showReference, setShowReference] = useState(false);
+  const useReference = showReference && !hasMediaData;
+
+  const effectiveBrief = useReference ? refBrief : brief;
+  const effectivePlan = useReference ? refPlan : plan;
+  const effectiveConnectorCalls: ConnectorCall[] = useReference ? refConn : connectorCalls;
+  const effectiveQaResults: QAResult[] = useReference ? refQa : qaResults;
+  const effectiveVariants = useReference ? refVariants : variants;
+  const effectiveStrategyRationale = useReference
+    ? rationaleScript.plan
+    : strategyRationale;
+
+  // Guard: no active campaign (unless showing reference)
+  if (phase === "brief" && effectiveBrief.campaign === "New Campaign" && !showReference) {
     return (
       <WorkspaceShell>
         <div className="mx-auto w-full max-w-5xl px-6 py-20 text-center">
           <p className="text-sm text-muted-foreground">No active campaign. Start a campaign first to see the media plan.</p>
+          <button
+            onClick={() => setShowReference(true)}
+            className="mt-4 rounded-sm bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase text-white hover:bg-hilti"
+          >
+            Previous Campaigns: camp_04 →
+          </button>
         </div>
       </WorkspaceShell>
     );
   }
 
-  const hasPlan = phase !== "brief";
-  const hasPublishing = connectorCalls.length > 0;
-  const hasQA = qaResults.length > 0;
-  const hasVariants = variants.length > 0;
+  const hasPlan = phase !== "brief" || useReference;
+  const hasPublishing = effectiveConnectorCalls.length > 0;
+  const hasQA = effectiveQaResults.length > 0;
+  const hasVariants = effectiveVariants.length > 0;
 
   // Derived media plan data
   const channelMix = useMemo(() => {
-    if (!strategyRationale) return [];
-    const text = strategyRationale.decided.toLowerCase();
+    if (!effectiveStrategyRationale) return [];
+    const text = effectiveStrategyRationale.decided.toLowerCase();
     const channels: { name: string; pct: number }[] = [];
     if (text.includes("meta")) channels.push({ name: "Meta", pct: 70 });
     if (text.includes("linkedin")) channels.push({ name: "LinkedIn", pct: 20 });
     if (text.includes("google")) channels.push({ name: "Google Ads", pct: 10 });
     if (channels.length === 0) channels.push({ name: "Meta", pct: 100 });
-    // Normalize to 100
     const total = channels.reduce((s, c) => s + c.pct, 0);
     return channels.map((c) => ({ ...c, pct: Math.round((c.pct / total) * 100) }));
-  }, [strategyRationale]);
+  }, [effectiveStrategyRationale]);
 
   // Publishing stats
   const pubStats = useMemo(() => {
     const byConnector: Record<string, { total: number; ok: number; pending: number; error: number }> = {};
-    for (const c of connectorCalls) {
+    for (const c of effectiveConnectorCalls) {
       const key = c.connector.replace("_ads_api", "").replace("_", " ");
       if (!byConnector[key]) byConnector[key] = { total: 0, ok: 0, pending: 0, error: 0 };
       byConnector[key][c.status] += 1;
       byConnector[key].total += 1;
     }
     return byConnector;
-  }, [connectorCalls]);
+  }, [effectiveConnectorCalls]);
 
   // QA stats
   const qaStats = useMemo(() => {
     if (!hasQA) return null;
-    const passes = qaResults.filter((r) => r.judge.verdict === "pass").length;
-    const fails = qaResults.filter((r) => r.judge.verdict === "fail").length;
-    const blocked = qaResults.filter((r) => r.checks.some((c) => c.result === "fail")).length;
-    return { total: qaResults.length, passes, fails, blocked, passRate: ((passes / qaResults.length) * 100).toFixed(0) };
-  }, [qaResults, hasQA]);
+    const passes = effectiveQaResults.filter((r) => r.judge.verdict === "pass").length;
+    const fails = effectiveQaResults.filter((r) => r.judge.verdict === "fail").length;
+    const blocked = effectiveQaResults.filter((r) => r.checks.some((c) => c.result === "fail")).length;
+    return { total: effectiveQaResults.length, passes, fails, blocked, passRate: ((passes / effectiveQaResults.length) * 100).toFixed(0) };
+  }, [effectiveQaResults, hasQA]);
 
   // UTM data
   const utmData = useMemo(() => {
     if (!hasVariants) return [];
-    return variants.slice(0, 12).map((v) => ({
+    return effectiveVariants.slice(0, 12).map((v) => ({
       variantId: v.id,
       locale: v.locale,
       channel: v.channel,
-      utm: `utm_source=${v.channel}&utm_medium=paid_social&utm_campaign=${brief.id.replace("brief_", "")}&utm_content=${v.id}&utm_term=${v.locale}`,
-      wellFormed: qaResults.find((q) => q.variant_id === v.id)?.checks.find((c) => c.rule.includes("utm"))?.result === "pass",
+      utm: `utm_source=${v.channel}&utm_medium=paid_social&utm_campaign=${effectiveBrief.id.replace("brief_", "")}&utm_content=${v.id}&utm_term=${v.locale}`,
+      wellFormed: effectiveQaResults.find((q) => q.variant_id === v.id)?.checks.find((c) => c.rule.includes("utm"))?.result === "pass",
     }));
-  }, [hasVariants, variants, brief.id, qaResults]);
+  }, [hasVariants, effectiveVariants, effectiveBrief.id, effectiveQaResults]);
 
   return (
     <WorkspaceShell>
@@ -97,26 +124,50 @@ function MediaDashboard() {
         {/* Header */}
         <header>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Media Workspace</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{brief.campaign}</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{effectiveBrief.campaign}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {brief.product} · {brief.market} · {brief.locales.join(" / ")} · Budget: €{(brief.budget_usd / 1000).toFixed(0)}k · Phase: {phase}
+            {effectiveBrief.product} · {effectiveBrief.market} · {effectiveBrief.locales.join(" / ")} · Budget: €{(effectiveBrief.budget_usd / 1000).toFixed(0)}k · Phase: {phase}
           </p>
         </header>
+
+        {/* Previous Campaigns reference toggle */}
+        {!hasMediaData && (
+          <div className="rounded-sm border border-border bg-background px-4 py-2 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              <strong className="text-foreground">Your campaign has no media data yet.</strong> View a previous campaign to see what media outputs look like.
+            </span>
+            <button
+              onClick={() => setShowReference(!showReference)}
+              className={`rounded-sm px-3 py-1 font-mono text-[10px] font-bold uppercase ${
+                showReference
+                  ? "bg-foreground text-white"
+                  : "border border-border text-muted-foreground hover:bg-black/5"
+              }`}
+            >
+              {showReference ? "← My Campaign" : "Previous Campaigns: camp_04 →"}
+            </button>
+          </div>
+        )}
+        {showReference && !hasMediaData && (
+          <div className="rounded-sm border border-amber/20 bg-amber/5 px-4 py-3 text-xs">
+            <span className="font-bold text-amber">Viewing reference:</span> camp_04 — Q4 Power-Tool Push, EU. {effectiveBrief.product} · {effectiveBrief.market} · {effectiveVariants.length} variants. This is a completed campaign shown as a template.
+          </div>
+        )}
 
         {/* ================================================================ */}
         {/* MEDIA PLAN OVERVIEW */}
         {/* ================================================================ */}
         <section>
           <h2 className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Media Plan Overview</h2>
-          {hasPlan && strategyRationale ? (
+          {hasPlan && effectiveStrategyRationale ? (
             <div className="space-y-4">
               {/* Metric cards */}
               <div className="grid grid-cols-4 gap-3">
                 {[
-                  { label: "Total Budget", value: `€${(brief.budget_usd / 1000).toFixed(0)}k` },
+                  { label: "Total Budget", value: `€${(effectiveBrief.budget_usd / 1000).toFixed(0)}k` },
                   { label: "Channels", value: channelMix.map(c => c.name).join(" + ") },
-                  { label: "Audience", value: brief.audience?.split("—")[0]?.trim() || brief.audience || "All" },
-                  { label: "Confidence", value: `${(strategyRationale.confidence * 100).toFixed(0)}%` },
+                  { label: "Audience", value: effectiveBrief.audience?.split("—")[0]?.trim() || effectiveBrief.audience || "All" },
+                  { label: "Confidence", value: `${(effectiveStrategyRationale.confidence * 100).toFixed(0)}%` },
                 ].map((m) => (
                   <div key={m.label} className="rounded-sm border border-border bg-white p-4">
                     <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{m.label}</p>
@@ -136,7 +187,7 @@ function MediaDashboard() {
                       </div>
                       <span className="w-12 text-right font-mono text-[10px] font-bold">{ch.pct}%</span>
                       <span className="font-mono text-[9px] text-muted-foreground">
-                        ≈ €{((brief.budget_usd * ch.pct) / 100 / 1000).toFixed(0)}k
+                        ≈ €{((effectiveBrief.budget_usd * ch.pct) / 100 / 1000).toFixed(0)}k
                       </span>
                     </div>
                   ))}
@@ -145,9 +196,9 @@ function MediaDashboard() {
               {/* Strategy rationale */}
               <div className="rounded-sm border border-border bg-white p-4">
                 <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground mb-2">Strategy Decision</p>
-                <p className="text-sm">{strategyRationale.decided}</p>
+                <p className="text-sm">{effectiveStrategyRationale.decided}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {strategyRationale.knowledge_cited.map((k) => (
+                  {effectiveStrategyRationale.knowledge_cited.map((k) => (
                     <span key={k} className="rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">{k}</span>
                   ))}
                 </div>
@@ -277,7 +328,7 @@ function MediaDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {qaResults.slice(0, 16).map((r) => (
+                      {effectiveQaResults.slice(0, 16).map((r) => (
                         <tr key={r.variant_id} className="hover:bg-black/[0.01]">
                           <td className="px-4 py-1.5 font-mono text-[10px] font-bold">{r.variant_id}</td>
                           {r.checks.map((c, i) => (
@@ -300,12 +351,12 @@ function MediaDashboard() {
               </div>
 
               {/* Brand-voice judge results */}
-              {qaResults.filter(r => r.judge.verdict === "fail").length > 0 && (
+              {effectiveQaResults.filter(r => r.judge.verdict === "fail").length > 0 && (
                 <div className="rounded-sm border border-hilti/20 bg-hilti/5 p-4">
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-hilti mb-2">
-                    Brand-Voice Violations ({qaResults.filter(r => r.judge.verdict === "fail").length})
+                    Brand-Voice Violations ({effectiveQaResults.filter(r => r.judge.verdict === "fail").length})
                   </p>
-                  {qaResults.filter(r => r.judge.verdict === "fail").map((r) => (
+                  {effectiveQaResults.filter(r => r.judge.verdict === "fail").map((r) => (
                     <div key={r.variant_id} className="mt-2 rounded-sm border border-border bg-white p-3 text-xs">
                       <p><span className="font-bold">{r.variant_id}</span>: flagged "{r.judge.flagged_phrase}"</p>
                       <p className="text-muted-foreground mt-1">{r.judge.reason}</p>

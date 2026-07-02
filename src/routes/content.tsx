@@ -8,6 +8,12 @@ import { VariantCard } from "@/components/timeline/VariantCard";
 import { openPptxInNewTab } from "@/lib/html-pptx";
 import { listSkills } from "@/lib/persistence";
 import { useState, useMemo } from "react";
+import {
+  brief as refBrief,
+  plan as refPlan,
+  variants as refVariants,
+  rationaleScript,
+} from "@/fixtures/camp_04";
 import type { AdVariant, DecisionRationale, RegistryArtifact } from "@/types";
 
 export const Route = createFileRoute("/content")({
@@ -42,7 +48,7 @@ function ContentDashboard() {
   const [selectedVariant, setSelectedVariant] = useState<AdVariant | null>(null);
 
   // Data-driven derivations (replaces hardcoded mock functions)
-  const contentRationale: DecisionRationale | undefined = useMemo(
+  const effectiveRationale: DecisionRationale | undefined = useMemo(
     () => rationaleStream.filter((r) => r.agent === "content").at(-1),
     [rationaleStream],
   );
@@ -55,30 +61,48 @@ function ContentDashboard() {
     }
   }, []);
 
-  const hasContent = variants.length > 0;
+  const hasContent = variants.length > 0; // Always check real store data for reference toggle
   const contentReady = phase === "content" || phase === "localization" || phase === "qa" ||
     phase === "H2" || phase === "H-legal" || phase === "rollout" || phase === "H3" ||
     phase === "live" || phase === "H4" || phase === "done";
   const preContent = phase === "brief" || phase === "planning" || phase === "H1";
 
-  // Guard: no active campaign
-  if (phase === "brief" && brief.campaign === "New Campaign") {
+  // Reference template mode — use camp_04 fixture when user's campaign is empty
+  const [showReference, setShowReference] = useState(false);
+  const useReference = showReference && !hasContent;
+
+  // Data: real (from store) or reference (camp_04 fixture)
+  const effectiveBrief = useReference ? refBrief : brief;
+  const effectivePlan = useReference ? refPlan : plan;
+  const effectiveVariants = useReference ? refVariants : variants;
+  const effectiveRationale: DecisionRationale | undefined = useReference
+    ? rationaleScript.content
+    : effectiveRationale;
+
+  // Guard: no active campaign (unless showing reference)
+  if (phase === "brief" && effectiveBrief.campaign === "New Campaign" && !showReference) {
     return (
       <WorkspaceShell>
         <div className="mx-auto w-full max-w-5xl px-6 py-20 text-center">
           <p className="text-sm text-muted-foreground">No active campaign. Start a campaign first to see content.</p>
+          <button
+            onClick={() => setShowReference(true)}
+            className="mt-4 rounded-sm bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase text-white hover:bg-hilti"
+          >
+            View Reference Template: camp_04 →
+          </button>
         </div>
       </WorkspaceShell>
     );
   }
 
-  // Paid Media variants (real data)
-  const paidVariants = useMemo(() => variants.filter((v) => v.channel === "meta"), [variants]);
-  const linkedinVariants = useMemo(() => variants.filter((v) => v.channel === "linkedin"), [variants]);
-  const locales = useMemo(() => [...new Set(variants.map((v) => v.locale))], [variants]);
+  // Paid Media variants (real data or reference)
+  const paidVariants = useMemo(() => effectiveVariants.filter((v: AdVariant) => v.channel === "meta"), [effectiveVariants]);
+  const linkedinVariants = useMemo(() => effectiveVariants.filter((v: AdVariant) => v.channel === "linkedin"), [effectiveVariants]);
+  const locales = useMemo(() => [...new Set(effectiveVariants.map((v: AdVariant) => v.locale))], [effectiveVariants]);
   const [activeLocale, setActiveLocale] = useState<string>(locales[0] || "de-DE");
   const filteredVariants = useMemo(
-    () => paidVariants.filter((v) => v.locale === activeLocale),
+    () => paidVariants.filter((v: AdVariant) => v.locale === activeLocale),
     [paidVariants, activeLocale],
   );
 
@@ -91,11 +115,35 @@ function ContentDashboard() {
         {/* Header */}
         <header>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Content Workspace</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{brief.campaign}</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{effectiveBrief.campaign}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {brief.product} · {brief.market} · {brief.locales.join(" / ")} · Phase: {phase}
+            {effectiveBrief.product} · {effectiveBrief.market} · {effectiveBrief.locales.join(" / ")} · Phase: {phase}
           </p>
         </header>
+
+        {/* Previous Campaigns reference toggle */}
+        {!hasContent && (
+          <div className="rounded-sm border border-border bg-background px-4 py-2 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              <strong className="text-foreground">Your campaign has no content yet.</strong> View a previous campaign to see what outputs look like.
+            </span>
+            <button
+              onClick={() => setShowReference(!showReference)}
+              className={`rounded-sm px-3 py-1 font-mono text-[10px] font-bold uppercase ${
+                showReference
+                  ? "bg-foreground text-white"
+                  : "border border-border text-muted-foreground hover:bg-black/5"
+              }`}
+            >
+              {showReference ? "← My Campaign" : "Previous Campaigns: camp_04 →"}
+            </button>
+          </div>
+        )}
+        {showReference && !hasContent && (
+          <div className="rounded-sm border border-amber/20 bg-amber/5 px-4 py-3 text-xs">
+            <span className="font-bold text-amber">Viewing reference:</span> camp_04 — Q4 Power-Tool Push, EU. SIW 6AT-A22 · DACH · 16 variants. This is a completed campaign shown as a template.
+          </div>
+        )}
 
         {/* Gate Status Banner */}
         {preContent && (
@@ -110,13 +158,13 @@ function ContentDashboard() {
         )}
         {phase === "content" && hasContent && !agentBusy && (
           <div className="rounded-sm border border-emerald/20 bg-emerald/5 px-4 py-3 text-xs">
-            <span className="font-bold text-emerald">✓ Content generated.</span> {contentRationale?.decided || "Creative concepts ready for review."}
+            <span className="font-bold text-emerald">✓ Content generated.</span> {effectiveRationale?.decided || "Creative concepts ready for review."}
             <span className="ml-2 text-muted-foreground">Ready for Creative Approval (H-C gate — not yet wired into pipeline Phase type).</span>
           </div>
         )}
         {contentReady && hasContent && (
           <div className="rounded-sm border border-emerald/20 bg-emerald/5 px-4 py-3 text-xs">
-            <span className="font-bold text-emerald">✓ Content complete.</span> {contentRationale?.decided || ""} {variants.length} variants across {locales.length} locales.
+            <span className="font-bold text-emerald">✓ Content complete.</span> {effectiveRationale?.decided || ""} {effectiveVariants.length} variants across {locales.length} locales.
           </div>
         )}
 
@@ -137,20 +185,20 @@ function ContentDashboard() {
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Big Idea</span>
               </div>
               <div className="p-4">
-                {contentRationale ? (
+                {effectiveRationale ? (
                   <>
-                    <p className="text-lg font-bold tracking-tight">{contentRationale.decided}</p>
+                    <p className="text-lg font-bold tracking-tight">{effectiveRationale.decided}</p>
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                      {contentRationale.why.map((w, i) => (
+                      {effectiveRationale.why.map((w, i) => (
                         <span key={i} className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
                           {w.slice(0, 80)}{w.length > 80 ? "…" : ""}
                         </span>
                       ))}
                     </div>
                     <div className="mt-3 flex items-center gap-2 font-mono text-[9px] text-muted-foreground">
-                      <span>Confidence: {(contentRationale.confidence * 100).toFixed(0)}%</span>
+                      <span>Confidence: {(effectiveRationale.confidence * 100).toFixed(0)}%</span>
                       <span>·</span>
-                      <span>Cited: {contentRationale.knowledge_cited.join(", ")}</span>
+                      <span>Cited: {effectiveRationale.knowledge_cited.join(", ")}</span>
                     </div>
                   </>
                 ) : (
@@ -173,7 +221,7 @@ function ContentDashboard() {
                     <span className="font-mono text-[8px] uppercase text-muted-foreground">KV</span>
                   </div>
                   <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
-                    {contentRationale?.decided?.slice(0, 80) || brief.product} — {hasContent ? `${variants.length} variants generated` : "pending generation"}
+                    {effectiveRationale?.decided?.slice(0, 80) || effectiveBrief.product} — {hasContent ? `${effectiveVariants.length} variants generated` : "pending generation"}
                   </p>
                 </div>
               </div>
@@ -189,8 +237,8 @@ function ContentDashboard() {
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Master Story</span>
               </div>
               <div className="p-4 space-y-3">
-                {contentRationale?.why?.length ? (
-                  contentRationale.why.map((w, i) => (
+                {effectiveRationale?.why?.length ? (
+                  effectiveRationale.why.map((w, i) => (
                     <div key={i} className="flex gap-3">
                       <span className="mt-0.5 font-mono text-[10px] font-bold text-hilti">0{i + 1}</span>
                       <p className="text-xs">{w}</p>
@@ -200,7 +248,7 @@ function ContentDashboard() {
                   <div className="space-y-3">
                     <div className="flex gap-3">
                       <span className="mt-0.5 font-mono text-[10px] font-bold text-muted-foreground">01</span>
-                      <p className="text-xs text-muted-foreground">{brief.objective}</p>
+                      <p className="text-xs text-muted-foreground">{effectiveBrief.objective}</p>
                     </div>
                     <p className="font-mono text-[9px] text-muted-foreground">Waiting for Content agent to develop messages.</p>
                   </div>
@@ -219,7 +267,7 @@ function ContentDashboard() {
                   <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded bg-black/10">
                     <span className="font-mono text-[8px] uppercase text-muted-foreground">▶ mp4</span>
                   </div>
-                  <p className="font-mono text-[9px] text-muted-foreground">15s product demo — {brief.product} torque control → jobsite wide → CTA overlay</p>
+                  <p className="font-mono text-[9px] text-muted-foreground">15s product demo — {effectiveBrief.product} torque control → jobsite wide → CTA overlay</p>
                 </div>
               </div>
               <div className="border-t border-border px-4 py-2">
@@ -239,9 +287,9 @@ function ContentDashboard() {
                 <div className="flex size-12 items-center justify-center rounded bg-hilti/10">
                   <span className="font-mono text-lg font-bold text-hilti">P</span>
                 </div>
-                <p className="text-center text-xs">Branded PPTX · Hilti corporate template · {variants.length || 0} variants included</p>
+                <p className="text-center text-xs">Branded PPTX · Hilti corporate template · {effectiveVariants.length || 0} variants included</p>
                 <button
-                  onClick={() => openPptxInNewTab({ brief, plan, variants, variantCount: variants.length || 4, localeCount: brief.locales.length })}
+                  onClick={() => openPptxInNewTab({ brief: effectiveBrief, plan: effectivePlan, variants: effectiveVariants, variantCount: effectiveVariants.length || 4, localeCount: effectiveBrief.locales.length })}
                   className="rounded-sm bg-hilti px-3 py-1.5 font-mono text-[10px] font-bold text-white hover:bg-hilti/90"
                 >
                   View Deck →
