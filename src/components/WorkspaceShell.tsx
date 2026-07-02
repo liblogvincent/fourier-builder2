@@ -9,21 +9,16 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const phase = useWorkspace((s) => s.phase);
   const brief = useWorkspace((s) => s.brief);
   const location = useLocation();
-  const onHome = location.pathname === "/";
-  const onWorkspace = location.pathname === "/workspace";
+  const path = location.pathname;
+  const onHome = path === "/";
+  const onWorkspace = path === "/workspace";
+  const onContent = path.startsWith("/content");
+  const onMedia = path.startsWith("/media");
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      {/* Left: DAG ribbon */}
-      <aside className="hidden w-64 flex-col border-r border-border bg-white/50 md:flex">
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-            Campaign DAG
-          </span>
-          <div className="size-2 animate-pulse rounded-full bg-emerald" />
-        </div>
-        <WorkflowDag />
-      </aside>
+      {/* Left sidebar — page-dependent content */}
+      <LeftSidebar path={path} onWorkspace={onWorkspace} onContent={onContent} onMedia={onMedia} />
 
       {/* Center */}
       <main className="flex flex-1 flex-col overflow-hidden bg-white">
@@ -84,6 +79,122 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         <PartnerRail />
       </aside>
     </div>
+  );
+}
+
+function LeftSidebar({ path, onWorkspace, onContent, onMedia }: {
+  path: string; onWorkspace: boolean; onContent: boolean; onMedia: boolean;
+}) {
+  const showDag = onWorkspace;
+  const showContentOutline = onContent;
+  const showMediaNav = onMedia;
+  const showNothing = !showDag && !showContentOutline && !showMediaNav;
+
+  if (showNothing) {
+    return (
+      <aside className="hidden w-56 flex-col border-r border-border bg-white/50 md:flex">
+        <div className="flex items-center border-b border-border p-4">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Quick Links
+          </span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <SideLink to="/workspace" label="→ Campaign Workspace" detail="Pipeline & gates" />
+          <SideLink to="/content" label="→ Content" detail="4-tier hierarchy" />
+          <SideLink to="/media" label="→ Media" detail="Plan, QA, publish" />
+          <SideLink to="/campaigns" label="→ Campaigns" detail="Brief library" />
+          <SideLink to="/skills" label="→ Skills" detail="Registry" />
+          <SideLink to="/evals" label="→ Evals" detail="Performance" />
+          <div className="mt-4 pt-4 border-t border-border">
+            <a
+              href="https://github.com/liblogvincent/luban/blob/main/docs/Fourier-User-Handbook.md"
+              target="_blank" rel="noopener noreferrer"
+              className="block rounded-sm px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-black/5 hover:text-foreground"
+            >
+              📖 Handbook →
+            </a>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  if (showDag) {
+    return (
+      <aside className="hidden w-64 flex-col border-r border-border bg-white/50 md:flex">
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Campaign Pipeline
+          </span>
+          <div className="size-2 animate-pulse rounded-full bg-emerald" />
+        </div>
+        <WorkflowDag />
+      </aside>
+    );
+  }
+
+  if (showContent) {
+    return (
+      <aside className="hidden w-56 flex-col border-r border-border bg-white/50 md:flex">
+        <div className="flex items-center border-b border-border p-4">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Content Tiers
+          </span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[10px]">
+          <TierItem num="1" label="Master Content" active />
+          <TierItem num="2" label="Variations" />
+          <TierItem num="3" label="Channel" />
+          <TierItem num="4" label="Local" />
+          <div className="mt-4 pt-4 border-t border-border space-y-1">
+            <p className="px-2 text-[9px] uppercase tracking-wider text-muted-foreground">Actions</p>
+            <SideLink to="/workspace" label="← Workspace" />
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  if (showMedia) {
+    return (
+      <aside className="hidden w-56 flex-col border-r border-border bg-white/50 md:flex">
+        <div className="flex items-center border-b border-border p-4">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Media Sections
+          </span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[10px]">
+          <a href="#media-plan" className="block rounded-sm px-2 py-1.5 text-muted-foreground hover:bg-black/5">Media Plan</a>
+          <a href="#publishing" className="block rounded-sm px-2 py-1.5 text-muted-foreground hover:bg-black/5">Publishing</a>
+          <a href="#utm" className="block rounded-sm px-2 py-1.5 text-muted-foreground hover:bg-black/5">UTM Tracking</a>
+          <a href="#qa" className="block rounded-sm px-2 py-1.5 text-muted-foreground hover:bg-black/5">QA Dashboard</a>
+          <a href="#sync" className="block rounded-sm px-2 py-1.5 text-muted-foreground hover:bg-black/5">Sync Status</a>
+          <div className="mt-4 pt-4 border-t border-border">
+            <SideLink to="/workspace" label="← Workspace" />
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  return null;
+}
+
+function TierItem({ num, label, active }: { num: string; label: string; active?: boolean }) {
+  return (
+    <div className={`rounded-sm px-2 py-1.5 flex items-center gap-2 ${active ? "bg-foreground/5 font-bold" : "text-muted-foreground"}`}>
+      <span className={`rounded-sm px-1 py-0.5 text-[8px] font-bold ${active ? "bg-foreground text-white" : "bg-border"}`}>T{num}</span>
+      {label}
+    </div>
+  );
+}
+
+function SideLink({ to, label, detail }: { to: string; label: string; detail?: string }) {
+  return (
+    <Link to={to} className="block rounded-sm px-2 py-1.5 text-muted-foreground hover:bg-black/5 hover:text-foreground">
+      <span className="text-[10px] uppercase tracking-wider">{label}</span>
+      {detail && <span className="block text-[8px] text-muted-foreground/60">{detail}</span>}
+    </Link>
   );
 }
 
