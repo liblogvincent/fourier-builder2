@@ -4,6 +4,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useNavigate } from "@tanstack/react-router";
 import { useWorkspace } from "@/store/workspace";
 import { listCampaigns, saveCampaign } from "@/lib/persistence";
+import { ORCHESTRATOR_PROMPT } from "@/lib/agent-prompts";
 import type { GateId } from "@/types";
 import { Send, Sparkles } from "lucide-react";
 
@@ -169,6 +170,14 @@ export function AgentConsole() {
                 </button>
               ))}
             </div>
+            <details className="mt-3">
+              <summary className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground">
+                View agent prompt →
+              </summary>
+              <pre className="mt-2 rounded-sm border border-border bg-background p-3 font-mono text-[8px] leading-relaxed text-muted-foreground whitespace-pre-wrap max-h-36 overflow-y-auto">
+                {ORCHESTRATOR_PROMPT}
+              </pre>
+            </details>
           </div>
         )}
 

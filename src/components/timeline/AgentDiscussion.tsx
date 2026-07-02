@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useWorkspace } from "@/store/workspace";
+import { CAMPAIGN_PLANNING_PROMPT } from "@/lib/agent-prompts";
 import type { Phase } from "@/types";
 
 const PHASE_GUIDANCE: Record<string, { agent: string; message: string; suggestions: string[] }> = {
@@ -127,6 +128,14 @@ export function AgentDiscussion() {
               ))}
             </div>
           )}
+          <details className="mt-3">
+            <summary className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground">
+              View agent prompt →
+            </summary>
+            <pre className="mt-2 rounded-sm border border-border bg-background p-3 font-mono text-[8px] leading-relaxed text-muted-foreground whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {CAMPAIGN_PLANNING_PROMPT}
+            </pre>
+          </details>
         </div>
       )}
 

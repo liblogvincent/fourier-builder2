@@ -48,39 +48,28 @@ function Home() {
         </header>
 
         {isClean ? (
-          <div className="flex flex-col items-center justify-center gap-6 rounded-sm border-2 border-dashed border-border bg-white py-20">
-            <div className="text-center">
-              <p className="text-lg font-semibold">No campaign loaded</p>
-              <p className="mt-2 text-sm text-muted-foreground max-w-md">
-                Start a new campaign or switch to <strong>Scripted</strong> mode to see a demo with pre-loaded data.
-              </p>
+          <>
+            <div className="rounded-sm border border-border bg-background px-4 py-3 text-xs text-center">
+              <strong>No campaign loaded.</strong> Describe your campaign below or click a starter — the Orchestrator will structure your brief.
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  newCampaign();
-                  void navigate({ to: "/workspace" });
-                }}
-                className="rounded-sm bg-hilti px-4 py-2 text-sm font-bold text-white hover:bg-hilti/90"
-              >
-                + New Campaign
-              </button>
-              <button
-                onClick={() => useWorkspace.getState().setDemoMode(true)}
-                className="rounded-sm border border-border bg-white px-4 py-2 text-sm font-bold hover:bg-black/5"
-              >
-                ▶ Run Demo
-              </button>
-              <a
-                href="https://github.com/liblogvincent/luban/blob/main/docs/Fourier-User-Handbook.md"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-sm border border-border bg-white px-4 py-2 text-sm font-bold hover:bg-black/5"
-              >
-                📖 User Handbook
-              </a>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+              <div className="h-[480px]">
+                <AgentConsole />
+              </div>
+              <div className="h-[480px] flex flex-col items-center justify-center gap-4 rounded-sm border-2 border-dashed border-border bg-white p-8">
+                <p className="text-sm text-muted-foreground text-center">Quick start</p>
+                <button onClick={() => { newCampaign(); void navigate({ to: "/workspace" }); }} className="w-full rounded-sm bg-hilti px-4 py-2 text-sm font-bold text-white hover:bg-hilti/90">
+                  + New Campaign
+                </button>
+                <button onClick={() => useWorkspace.getState().setDemoMode(true)} className="w-full rounded-sm border border-border bg-white px-4 py-2 text-sm font-bold hover:bg-black/5">
+                  ▶ Run Demo
+                </button>
+                <a href="https://github.com/liblogvincent/luban/blob/main/docs/Fourier-User-Handbook.md" target="_blank" rel="noopener noreferrer" className="w-full rounded-sm border border-border bg-white px-4 py-2 text-sm font-bold text-center hover:bg-black/5">
+                  📖 User Handbook
+                </a>
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           <>
             <CampaignProgressBar
