@@ -5,17 +5,17 @@ import type { Phase } from "@/types";
 const PHASE_GUIDANCE: Record<string, { agent: string; message: string; suggestions: string[] }> = {
   brief: {
     agent: "Orchestrator",
-    message: "I'm ready to structure your campaign brief. Paste your brief above or type a campaign idea — I'll extract the key details and prepare it for the Strategy agent.",
+    message: "I'm ready to structure your campaign brief. Paste your brief above or type a campaign idea — I'll extract the key details and prepare it for the Campaign Planning agent.",
     suggestions: ["TE 70, 10% off, DACH, €50k, Q4"],
   },
   planning: {
-    agent: "Strategy",
+    agent: "Campaign Planning",
     message: "I'm analyzing your brief and generating the campaign plan — channel mix, budget allocation, audience targeting, and variant strategy. This takes a moment...",
     suggestions: [],
   },
   H1: {
-    agent: "Strategy",
-    message: "The Campaign Plan (Epic 1, A0-A5) is ready. This covers 5 RMB workstreams: Paid Media Strategy (A1-A2), HOL Customer Journey (A3), Email Strategy (A4), and Organic Social/HN Strategy (A5). I recommend discussing each workstream before approving at H1.",
+    agent: "Campaign Planning",
+    message: "The Campaign Plan (Epic 1, A0-A5) is ready. This covers 5 RMB workstreams: Paid Media Campaign Planning (A1-A2), HOL Customer Journey (A3), Email Campaign Planning (A4), and Organic Social/HN Campaign Planning (A5). I recommend discussing each workstream before approving at H1.",
     suggestions: [
       "Show me the paid media plan (channel mix, budget, KPIs)",
       "What's the HOL customer journey?",
@@ -67,9 +67,9 @@ export function AgentDiscussion() {
 
         "hol": `**HOL Customer Journey (A3):**\n\nThe campaign drives traffic to a dedicated promotional landing page on hilti.de (and .at, .ch, .li).\n\nEntry paths:\n1. Meta ad click → Promo LP with dealer locator CTA\n2. Google search → Product page with promo banner\n3. Direct type-in → Homepage hero banner → Promo LP\n4. Email click → Promo LP\n\nRequired assets:\n- 1 Promotional Landing Page (Contentful, Promo template)\n- 3 Hero banners (homepage, category page, product page)\n- 2 Hardcoded banners (registration flow, cart page)\n- Dealer locator deep-link integration\n\nAll assets rebuilt per MO space (Contentful constraint: no cross-space copy).`,
 
-        "email": `**Email Strategy (A4):**\n\nSegments:\n1. Active contractors (purchased power tools in last 12mo)\n2. Lapsed contractors (no purchase in 12+ mo)\n3. Specifiers/engineers (decision-makers, lower volume)\n\nSequence:\n- Email 1 (Launch): "The torque control you've been asking for" → Promo LP\n- Email 2 (Week 2): "See what DACH foremen are saying" → Social proof + case study\n- Email 3 (Week 4): "Last chance — 10% off ends Friday" → Urgency\n\nTesting: Subject line A/B test (technical vs emotional), send time optimization.\n\nRequires: SFMC automation + journey build, segmentation queries on Marketing Cloud Data Extensions.`,
+        "email": `**Email Campaign Planning (A4):**\n\nSegments:\n1. Active contractors (purchased power tools in last 12mo)\n2. Lapsed contractors (no purchase in 12+ mo)\n3. Specifiers/engineers (decision-makers, lower volume)\n\nSequence:\n- Email 1 (Launch): "The torque control you've been asking for" → Promo LP\n- Email 2 (Week 2): "See what DACH foremen are saying" → Social proof + case study\n- Email 3 (Week 4): "Last chance — 10% off ends Friday" → Urgency\n\nTesting: Subject line A/B test (technical vs emotional), send time optimization.\n\nRequires: SFMC automation + journey build, segmentation queries on Marketing Cloud Data Extensions.`,
 
-        "social": `**Organic Social & HN Strategy (A5):**\n\nHilti Owned Channels:\n- LinkedIn: 2 posts/week — technical deep-dive (torque control engineering) + jobsite story (foreman testimonial)\n- Instagram: 1 post/week — visual-first, jobsite photography, tool-in-action reels\n- YouTube: 1 video — 15s product demo (same as paid creative)\n\nHilti Network:\n- 3 posts across network partners\n- Localized per market (DE/AT/CH)\n- Format: 9×16 Stories, 1×1 Feed, 16×9 LinkedIn\n\nContent pillars: Precision, Durability, Productivity — same as Master Story.\n\nAll assets created on Figma, pushed to Sprinklr for scheduling.\n\nR2: Sprinklr direct access replaces social listening via online search.`,
+        "social": `**Organic Social & HN Campaign Planning (A5):**\n\nHilti Owned Channels:\n- LinkedIn: 2 posts/week — technical deep-dive (torque control engineering) + jobsite story (foreman testimonial)\n- Instagram: 1 post/week — visual-first, jobsite photography, tool-in-action reels\n- YouTube: 1 video — 15s product demo (same as paid creative)\n\nHilti Network:\n- 3 posts across network partners\n- Localized per market (DE/AT/CH)\n- Format: 9×16 Stories, 1×1 Feed, 16×9 LinkedIn\n\nContent pillars: Precision, Durability, Productivity — same as Master Story.\n\nAll assets created on Figma, pushed to Sprinklr for scheduling.\n\nR2: Sprinklr direct access replaces social listening via online search.`,
 
         "why did you choose meta": `I chose Meta as the hero channel because contractor segments in DACH index 3.2× higher on Meta vs LinkedIn for power-tool campaigns (DACH_Meta_2025_Q3 benchmarks). Meta also offers better creative format flexibility for video + static combinations. LinkedIn would add ~€15k to reach the same audience size. If you want multi-channel, I can split 70/30 Meta/LinkedIn — would increase budget by ~€12k.`,
 
