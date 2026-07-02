@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AgentCanvasShell } from "@/components/AgentCanvasShell";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { useWorkspace } from "@/store/workspace";
 import { CampaignProgressBar } from "@/components/home/CampaignProgressBar";
