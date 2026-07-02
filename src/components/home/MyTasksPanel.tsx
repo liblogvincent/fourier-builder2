@@ -28,8 +28,8 @@ export function MyTasksPanel() {
 
   useEffect(() => {
     setRoleState(getRole());
-    setCampaigns(listCampaigns());
-    setPhases(getAllBriefPhases());
+    listCampaigns().then(setCampaigns).catch(() => setCampaigns([]));
+    getAllBriefPhases().then(setPhases).catch(() => setPhases({}));
   }, [activePhase]);
 
   const tasks = useMemo<Task[]>(() => {

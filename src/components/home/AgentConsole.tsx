@@ -112,11 +112,13 @@ export function AgentConsole() {
         }
       }
       else if (kind === "LOAD" && arg) {
-        const target = listCampaigns().find((b) => b.id === arg || b.id.endsWith(arg));
-        if (target) {
-          loadBrief(target);
-          void navigate({ to: "/workspace" });
-        }
+        listCampaigns().then((campaigns) => {
+          const target = campaigns.find((b) => b.id === arg || b.id.endsWith(arg));
+          if (target) {
+            loadBrief(target);
+            void navigate({ to: "/workspace" });
+          }
+        }).catch(() => {});
       } else if (kind === "RESET") reset();
     }
   }, [messages, status, advance, decideGate, loadBrief, reset, navigate]);

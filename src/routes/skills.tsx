@@ -24,7 +24,9 @@ function SkillsPage() {
   const disposition = useWorkspace((s) => s.proposalDisposition);
   const setDisposition = useWorkspace((s) => s.setProposalDisposition);
   const [registry, setRegistry] = useState<RegistryArtifact[]>([]);
-  useEffect(() => { setRegistry(listSkills()); }, [disposition]);
+  useEffect(() => {
+    listSkills().then(setRegistry).catch(() => setRegistry([]));
+  }, [disposition]);
 
   return (
     <WorkspaceShell>

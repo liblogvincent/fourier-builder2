@@ -28,8 +28,9 @@ function HistoryPage() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const b = listCampaigns().find((c) => c.id === id) ?? null;
-    setBrief(b);
+    listCampaigns().then((campaigns) => {
+      setBrief(campaigns.find((c) => c.id === id) ?? null);
+    }).catch(() => setBrief(null));
     setEvents(listRunEvents(id));
   }, [id, tick, agentBusy]);
 

@@ -11,8 +11,8 @@ export function RecentCampaignsStrip() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setItems(listCampaigns().slice(0, 4));
-    setPhases(getAllBriefPhases());
+    listCampaigns().then((c) => setItems(c.slice(0, 4))).catch(() => setItems([]));
+    getAllBriefPhases().then(setPhases).catch(() => setPhases({}));
   }, []);
 
   const open = (b: Brief) => {

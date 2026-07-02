@@ -18,7 +18,7 @@ function CampaignsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setItems(listCampaigns());
+    listCampaigns().then(setItems).catch(() => setItems([]));
   }, []);
 
   const open = (b: Brief) => {

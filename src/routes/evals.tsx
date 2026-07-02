@@ -29,7 +29,9 @@ export const Route = createFileRoute("/evals")({
 
 function EvalsPage() {
   const [evalSeries, setEvalSeries] = useState<EvalPoint[]>([]);
-  useEffect(() => { setEvalSeries(listRuns()); }, []);
+  useEffect(() => {
+    listRuns().then(setEvalSeries).catch(() => setEvalSeries([]));
+  }, []);
   return (
     <WorkspaceShell>
       <div className="mx-auto w-full max-w-4xl space-y-6 px-8 py-8">
