@@ -3,10 +3,24 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 let _supabase: SupabaseClient | null = null;
 
 function getSupabaseUrl() {
-  try { return import.meta.env.VITE_SUPABASE_URL || ""; } catch { return ""; }
+  try {
+    return import.meta.env.VITE_SUPABASE_URL
+      || import.meta.env.NEXT_PUBLIC_SUPABASE_URL
+      || process.env.SUPABASE_URL
+      || process.env.NEXT_PUBLIC_SUPABASE_URL
+      || "";
+  } catch { return ""; }
 }
 function getSupabaseKey() {
-  try { return import.meta.env.VITE_SUPABASE_ANON_KEY || ""; } catch { return ""; }
+  try {
+    return import.meta.env.VITE_SUPABASE_ANON_KEY
+      || import.meta.env.SUPABASE_ANON_KEY
+      || process.env.SUPABASE_ANON_KEY
+      || "";
+  } catch { return ""; }
+}
+function getServiceRoleKey() {
+  try { return process.env.SUPABASE_SERVICE_ROLE_KEY || ""; } catch { return ""; }
 }
 
 function getClient(): SupabaseClient | null {
