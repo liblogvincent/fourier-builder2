@@ -31,7 +31,7 @@ function MediaDashboard() {
   const variants = useWorkspace((s) => s.variants);
   const rationaleStream = useWorkspace((s) => s.rationaleStream);
 
-  const effectiveStrategyRationale = useMemo(
+  const strategyRationale = useMemo(
     () => rationaleStream.filter((r) => r.agent === "strategy").at(-1),
     [rationaleStream],
   );
