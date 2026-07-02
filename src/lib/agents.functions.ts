@@ -3,7 +3,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { createAiGatewayProvider, resolveGatewayConfig } from "./ai-gateway.server";
 
-const MODEL = process.env.LLM_580_MODEL || "claude-opus-4-8";
+const MODEL = process.env.LLM_MODEL || "gpt-5.4";
 
 function gw() {
   const config = resolveGatewayConfig();
@@ -36,14 +36,15 @@ const RationaleSchema = z.object({
 });
 
 export const runStrategy = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => BriefIn.parse(d))
+  .inputValidator((d) => BriefIn.extend({ skillsContext: z.string().optional() }).parse(d))
   .handler(async ({ data }) => {
     const provider = gw();
     const { output } = await generateText({
       model: provider(MODEL),
       output: Output.object({ schema: RationaleSchema }),
       system:
-        "You are Strategy, a senior campaign-planning agent at Hilti. Decide a paid-social campaign plan and return rationale. Confidence is 0..1. Be terse, specific, citing concrete knowledge sources.",
+        "You are Strategy, a senior campaign-planning agent at Hilti. Decide a paid-social campaign plan and return rationale. Confidence is 0..1. Be terse, specific, citing concrete knowledge sources. If the brief or context is ambiguous, ask 1-2 clarifying questions before generating. Be specific and offer options. Example: \"I see 3 audience segments: contractor, specifier, rental. Which should be the primary target?\" Max 2 questions before proceeding with best-guess." +
+        `\n\n${data.skillsContext ?? ""}`,
       prompt: planPrompt(data),
     });
     return output;
@@ -61,8 +62,8 @@ const VariantsSchema = z.object({
 });
 
 export const runContent = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
-    z.object({ brief: BriefIn, n: z.number().min(1).max(6) }).parse(d),
+  .inputValidator((d) =>
+    z.object({ brief: BriefIn, n: z.number().min(1).max(6), skillsContext: z.string().optional() }).parse(d),
   )
   .handler(async ({ data }) => {
     const provider = gw();
@@ -71,7 +72,8 @@ export const runContent = createServerFn({ method: "POST" })
       model: provider(MODEL),
       output: Output.object({ schema: VariantsSchema }),
       system:
-        "You are Content, a paid-social copywriter for Hilti. Brand voice: precision, durability, partnership. NEVER use hype adjectives (revolutionary, revolutionäre, game-changer, innovative). Headlines under 40 chars; primary_text under 125 chars. Match the requested locale exactly.",
+        "You are Content, a paid-social copywriter for Hilti. Brand voice: precision, durability, partnership. NEVER use hype adjectives (revolutionary, revolutionäre, game-changer, innovative). Headlines under 40 chars; primary_text under 125 chars. Match the requested locale exactly. If the brief or context is ambiguous, ask 1-2 clarifying questions before generating. Be specific and offer options. Example: \"I see 3 audience segments: contractor, specifier, rental. Which should be the primary target?\" Max 2 questions before proceeding with best-guess. If audience or tone is ambiguous, offer 2-3 creative direction options before generating." +
+        `\n\n${data.skillsContext ?? ""}`,
       prompt: `Brief:\nproduct=${data.brief.product}\naudience=${data.brief.audience}\nobjective=${data.brief.objective}\nchannel=${data.brief.channel}\nlocale=${baseLocale}\n\nWrite ${data.n} distinct concepts in ${baseLocale}. Each: 1 headline, 1 primary_text, 1 cta. CTAs from: "Händler finden", "Mehr erfahren", "Demo buchen" (or fr equivalents if French locale). Vary the angle (torque/precision/durability/platform).`,
     });
     return output;
@@ -98,7 +100,7 @@ const LocalizedSchema = z.object({
 });
 
 export const runLocalization = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .inputValidator((d) =>
     z
       .object({
         source: z.object({
@@ -108,6 +110,7 @@ export const runLocalization = createServerFn({ method: "POST" })
           cta: z.string(),
         }),
         targetLocales: z.array(z.string()),
+        skillsContext: z.string().optional(),
       })
       .parse(d),
   )
@@ -117,7 +120,8 @@ export const runLocalization = createServerFn({ method: "POST" })
       model: provider(MODEL),
       output: Output.object({ schema: LocalizedSchema }),
       system:
-        "You are Localization for Hilti DACH+CH. Preserve SKU codes. CH market over-indexes on durability/heritage (swap safety leads for durability leads). fr-CH = full French translation. Keep CTA from approved list per locale.",
+        "You are Localization for Hilti DACH+CH. Preserve SKU codes. CH market over-indexes on durability/heritage (swap safety leads for durability leads). fr-CH = full French translation. Keep CTA from approved list per locale. If the brief or context is ambiguous, ask 1-2 clarifying questions before generating. Be specific and offer options. Example: \"I see 3 audience segments: contractor, specifier, rental. Which should be the primary target?\" Max 2 questions before proceeding with best-guess." +
+        `\n\n${data.skillsContext ?? ""}`,
       prompt: `Source (${data.source.locale}):\nheadline=${data.source.headline}\nprimary_text=${data.source.primary_text}\ncta=${data.source.cta}\n\nTarget locales: ${data.targetLocales.join(", ")}.\nReturn one localized object per target locale, plus up to 3 noteworthy diff entries explaining market-driven changes.`,
     });
     return output;
@@ -139,7 +143,7 @@ const JudgeSchema = z.object({
 });
 
 export const runQa = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .inputValidator((d) =>
     z
       .object({
         variants: z.array(
@@ -151,6 +155,7 @@ export const runQa = createServerFn({ method: "POST" })
           }),
         ),
         brandRules: z.array(z.string()).optional(),
+        skillsContext: z.string().optional(),
       })
       .parse(d),
   )
@@ -168,7 +173,8 @@ export const runQa = createServerFn({ method: "POST" })
       model: provider(MODEL),
       output: Output.object({ schema: JudgeSchema }),
       system:
-        "You are QA Brand Judge for Hilti. Apply the rules strictly. For each variant return verdict ('pass' or 'fail'), score (0..1), accuracy (your confidence 0..1), and on fail: the flagged_phrase, reason citing the rule, and a brand-aligned suggestion in the same locale.",
+        "You are QA Brand Judge for Hilti. Apply the rules strictly. For each variant return verdict ('pass' or 'fail'), score (0..1), accuracy (your confidence 0..1), and on fail: the flagged_phrase, reason citing the rule, and a brand-aligned suggestion in the same locale. If the brief or context is ambiguous, ask 1-2 clarifying questions before generating. Be specific and offer options. Example: \"I see 3 audience segments: contractor, specifier, rental. Which should be the primary target?\" Max 2 questions before proceeding with best-guess. If a flagged phrase could be interpreted multiple ways, ask before judging." +
+        `\n\n${data.skillsContext ?? ""}`,
       prompt: `Rules:\n- ${rules}\n\nVariants:\n${data.variants
         .map(
           (v) =>
@@ -194,7 +200,7 @@ const SkillSchema = z.object({
 });
 
 export const runInsights = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .inputValidator((d) =>
     z
       .object({
         campaignId: z.string(),
@@ -205,6 +211,7 @@ export const runInsights = createServerFn({ method: "POST" })
             reason: z.string(),
           }),
         ),
+        skillsContext: z.string().optional(),
       })
       .parse(d),
   )
@@ -214,7 +221,8 @@ export const runInsights = createServerFn({ method: "POST" })
       model: provider(MODEL),
       output: Output.object({ schema: SkillSchema }),
       system:
-        "You are Insights, a meta-learning agent at Hilti. From QA faults across a campaign, propose ONE new reusable Skill (Rule/Guideline/Playbook) that would have caught the fault upstream. Provide a tight regex pattern, scope, and decision rationale.",
+        "You are Insights, a meta-learning agent at Hilti. From QA faults across a campaign, propose ONE new reusable Skill (Rule/Guideline/Playbook) that would have caught the fault upstream. Provide a tight regex pattern, scope, and decision rationale. If the brief or context is ambiguous, ask 1-2 clarifying questions before generating. Be specific and offer options. Example: \"I see 3 audience segments: contractor, specifier, rental. Which should be the primary target?\" Max 2 questions before proceeding with best-guess." +
+        `\n\n${data.skillsContext ?? ""}`,
       prompt: `Campaign: ${data.campaignId}\nFaults:\n${data.faults
         .map((f) => `- ${f.variant_id}: "${f.flagged_phrase}" — ${f.reason}`)
         .join("\n")}\n\nPropose a skill that would prevent this class of fault in future campaigns.`,
@@ -222,7 +230,7 @@ export const runInsights = createServerFn({ method: "POST" })
     return output;
   });
 
-function planPrompt(b: BriefInT & { revisionFeedback?: string }) {
+function planPrompt(b: BriefInT) {
   const base = `Brief:
 campaign=${b.campaign}
 product=${b.product}
