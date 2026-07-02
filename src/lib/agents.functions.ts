@@ -1,14 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { createAiGatewayProvider, resolveGatewayConfig } from "./ai-gateway.server";
 
 const MODEL = "google/gemini-3-flash-preview";
 
 function gw() {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("LOVABLE_API_KEY missing");
-  return createLovableAiGatewayProvider(key);
+  const config = resolveGatewayConfig();
+  return createAiGatewayProvider(config);
 }
 
 // Shared brief shape (kept tiny for schema-state budget)

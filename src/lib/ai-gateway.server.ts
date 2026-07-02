@@ -2,8 +2,30 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 const LOVABLE_AIG_RUN_ID_HEADER = "X-Lovable-AIG-Run-ID";
 
-export function createLovableAiGatewayProvider(
-  lovableApiKey: string,
+export interface GatewayConfig {
+  apiKey: string;
+  baseURL: string;
+}
+
+/**
+ * Resolve AI gateway config from environment variables.
+ * Priority: 580ai proxy (LLM_580_API_KEY + LLM_580_BASE_URL) → Lovable Gateway (LOVABLE_API_KEY)
+ */
+export function resolveGatewayConfig(): GatewayConfig {
+  const key580 = process.env.LLM_580_API_KEY;
+  const url580 = process.env.LLM_580_BASE_URL;
+  if (key580 && url580) {
+    return { apiKey: key580, baseURL: url580 };
+  }
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  if (lovableKey) {
+    return { apiKey: lovableKey, baseURL: "https://ai.gateway.lovable.dev/v1" };
+  }
+  throw new Error("No AI gateway configured. Set LLM_580_API_KEY+LLM_580_BASE_URL or LOVABLE_API_KEY.");
+}
+
+export function createAiGatewayProvider(
+  config: GatewayConfig,
   initialRunId?: string,
 ) {
   let runId = initialRunId?.trim() || undefined;
@@ -23,11 +45,13 @@ export function createLovableAiGatewayProvider(
   if (runId) publishRunId(runId);
 
   const provider = createOpenAICompatible({
-    name: "lovable",
-    baseURL: "https://ai.gateway.lovable.dev/v1",
+    name: "ai-gateway",
+    baseURL: config.baseURL,
     headers: {
-      "Lovable-API-Key": lovableApiKey,
-      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
+      Authorization: `Bearer ${config.apiKey}`,
+      ...(config.baseURL.includes("lovable")
+        ? { "Lovable-API-Key": config.apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" }
+        : {}),
     },
     fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
       const headers = new Headers(init?.headers);
@@ -49,4 +73,15 @@ export function createLovableAiGatewayProvider(
     getRunId: () => runId,
     waitForRunId: () => (runId ? Promise.resolve(runId) : runIdReady),
   });
+}
+
+/** @deprecated — use createAiGatewayProvider + resolveGatewayConfig instead */
+export function createLovableAiGatewayProvider(
+  lovableApiKey: string,
+  initialRunId?: string,
+) {
+  return createAiGatewayProvider(
+    { apiKey: lovableApiKey, baseURL: "https://ai.gateway.lovable.dev/v1" },
+    initialRunId,
+  );
 }

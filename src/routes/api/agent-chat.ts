@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { streamText, type UIMessage, convertToModelMessages } from "ai";
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { createAiGatewayProvider, resolveGatewayConfig } from "@/lib/ai-gateway.server";
 
 type Body = {
   messages: UIMessage[];
@@ -18,21 +18,25 @@ export const Route = createFileRoute("/api/agent-chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+        let config;
+        try {
+          config = resolveGatewayConfig();
+        } catch {
+          return new Response("No AI gateway configured. Set LLM_580_API_KEY+LLM_580_BASE_URL or LOVABLE_API_KEY.", { status: 500 });
+        }
 
         const { messages, context } = (await request.json()) as Body;
         if (!Array.isArray(messages))
           return new Response("messages required", { status: 400 });
 
-        const gateway = createLovableAiGatewayProvider(key);
+        const gateway = createAiGatewayProvider(config);
 
         const system = `You are the **Orchestrator**, an AI agent that runs paid-social campaigns for Hilti. You coordinate six specialist agents: Strategy, Content, Localization, QA Judge, Rollout, Insights.
 
 Your job is to be the user's interface — plan, steer, and explain. Be terse (max 4 short lines). When the user asks you to *do* something (plan, generate, localize, QA, roll out, approve), narrate what will happen and end with a single-line action tag on its own line, using EXACTLY one of:
 
 [ACTION:ADVANCE]           — run the next phase
-[ACTION:APPROVE:H1]        — approve gate H1 (or H2, H-legal, H3, H4)
+[ACTION:APPROVE:H1]        — approve gate H1 (or H2, H-C, H-legal, H3, H4)
 [ACTION:LOAD:<campaignId>] — switch to a different campaign
 [ACTION:RESET]             — reset current campaign to brief
 
