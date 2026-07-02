@@ -41,11 +41,8 @@ export function MyTasksPanel() {
         if (p === g) out.push({ brief: b, gate: g, status: "waiting" });
       }
     }
-    // If nothing is waiting, show upcoming queued gate for the active campaign
-    if (out.length === 0 && campaigns.length > 0) {
-      const b = campaigns.find((c) => c.id === activeBriefId) ?? campaigns[0];
-      out.push({ brief: b, gate: gates[0], status: "queued" });
-    }
+    // Only show tasks that are actually waiting at the current phase.
+    // No fake "queued" fallback — if nothing is waiting, the list is empty.
     return out;
   }, [role, campaigns, phases, activePhase, activeBriefId]);
 

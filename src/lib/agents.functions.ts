@@ -1,14 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { createAiGatewayProvider, resolveGatewayConfig } from "./ai-gateway.server";
 
-const MODEL = "google/gemini-3-flash-preview";
+const MODEL = process.env.LLM_580_MODEL || "claude-opus-4-8";
 
 function gw() {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("LOVABLE_API_KEY missing");
-  return createLovableAiGatewayProvider(key);
+  const config = resolveGatewayConfig();
+  return createAiGatewayProvider(config);
 }
 
 // Shared brief shape (kept tiny for schema-state budget)
@@ -21,6 +20,7 @@ const BriefIn = z.object({
   channel: z.string(),
   locales: z.array(z.string()),
   budget_usd: z.number(),
+  revisionFeedback: z.string().optional(),
 });
 type BriefInT = z.infer<typeof BriefIn>;
 
@@ -222,8 +222,8 @@ export const runInsights = createServerFn({ method: "POST" })
     return output;
   });
 
-function planPrompt(b: BriefInT) {
-  return `Brief:
+function planPrompt(b: BriefInT & { revisionFeedback?: string }) {
+  const base = `Brief:
 campaign=${b.campaign}
 product=${b.product}
 market=${b.market}
@@ -234,4 +234,10 @@ locales=${b.locales.join(", ")}
 budget_usd=${b.budget_usd}
 
 Decide: how many base concepts × how many locales, what to defer, key tradeoffs. Cite knowledge like "Hilti_Brand_Voice_v4.2", "DACH_Meta_2025_Q3_benchmarks".`;
+
+  if (b.revisionFeedback) {
+    return `${base}\n\n⚠️ REVISION REQUESTED — the reviewer sent the plan back with this feedback. Address every point:\n"${b.revisionFeedback}"\n\nGenerate a revised plan that addresses ALL the reviewer's concerns.`;
+  }
+
+  return base;
 }

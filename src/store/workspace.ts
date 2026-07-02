@@ -48,6 +48,10 @@ interface State {
   proposalDisposition: "pending" | "promoted" | "rejected";
   agentBusy: string | null;
   agentError: string | null;
+  /** Reviewer feedback from a "changes requested" decision, fed back to Strategy on re-plan */
+  revisionFeedback: string | null;
+  /** Whether the user has explicitly started a campaign (live mode clean slate) */
+  campaignStarted: boolean;
 
   brief: Brief;
   plan: typeof defaultPlan;
@@ -60,6 +64,7 @@ interface State {
   setRunMode: (m: RunMode) => void;
   setDemoMode: (on: boolean) => void;
   loadBrief: (b: Brief) => void;
+  newCampaign: () => void;
   pushRationale: (r: DecisionRationale) => void;
   decideGate: (gate: GateId, verdict: GateDecision["verdict"], note?: string) => void;
   applyFix: (variantId: string) => void;
@@ -112,6 +117,8 @@ export const useWorkspace = create<State>((set, get) => ({
   proposalDisposition: "pending",
   agentBusy: null,
   agentError: null,
+  revisionFeedback: null,
+  campaignStarted: false,
 
   brief: defaultBrief,
   plan: defaultPlan,
@@ -136,6 +143,8 @@ export const useWorkspace = create<State>((set, get) => ({
       gateDecisions: {},
       appliedFixes: new Set(),
       proposalDisposition: "pending",
+      campaignStarted: true,
+      revisionFeedback: null,
       // reset working artifacts to the camp_04 fixture shape but with the new brief id
       plan: { ...defaultPlan, briefId: b.id },
       variants: defaultVariants,
@@ -145,6 +154,38 @@ export const useWorkspace = create<State>((set, get) => ({
       proposal: defaultProposal,
       agentBusy: null,
       agentError: null,
+    }),
+
+  newCampaign: () =>
+    set({
+      phase: "brief",
+      rationaleStream: [],
+      gateDecisions: {},
+      appliedFixes: new Set(),
+      proposalDisposition: "pending",
+      campaignStarted: true,
+      revisionFeedback: null,
+      agentBusy: null,
+      agentError: null,
+      brief: {
+        ...defaultBrief,
+        id: `brief_${Date.now()}`,
+        campaign: "New Campaign",
+        product: "",
+        market: "",
+        audience: "",
+        objective: "",
+        channels: ["meta"],
+        locales: ["de-DE"],
+        budget_usd: 0,
+        assumptions: [],
+      },
+      plan: { ...defaultPlan, briefId: `brief_${Date.now()}` },
+      variants: [],
+      localeDiffs: [],
+      qaResults: [],
+      connectorCalls: [],
+      proposal: defaultProposal,
     }),
 
   pushRationale: (r) =>
@@ -191,6 +232,19 @@ export const useWorkspace = create<State>((set, get) => ({
         set({ proposalDisposition: "promoted" });
       }
       void get().advance();
+    }
+    // Revision loop: when changes requested at H1, route back to planning with feedback
+    if (verdict === "changes_requested" && gate === "H1") {
+      set({
+        revisionFeedback: note || "Reviewer requested changes to the campaign plan.",
+        phase: "planning",
+        agentError: null,
+      });
+      // Re-run Strategy agent with feedback context
+      const { runMode } = get();
+      void executePhase("planning", runMode, get, set).then(() => {
+        set({ phase: "H1" });
+      });
     }
   },
 
@@ -244,6 +298,8 @@ export const useWorkspace = create<State>((set, get) => ({
       demoMode: false,
       agentBusy: null,
       agentError: null,
+      revisionFeedback: null,
+      campaignStarted: false,
     }),
 }));
 
@@ -336,6 +392,7 @@ async function runLiveAgent(
   if (next === "planning") {
     set({ agentBusy: "strategy", agentError: null });
     const b = get().brief;
+    const feedback = get().revisionFeedback;
     const r = await runStrategy({
       data: {
         campaign: b.campaign,
@@ -346,6 +403,7 @@ async function runLiveAgent(
         channel: b.channels[0] ?? "meta",
         locales: b.locales,
         budget_usd: b.budget_usd,
+        revisionFeedback: feedback ?? undefined,
       },
     });
     const rationale: DecisionRationale = {
