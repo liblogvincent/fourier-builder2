@@ -1,46 +1,50 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useWorkspace } from "@/store/workspace";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import type { GateId } from "@/types";
+
+/** Maps each gate to the right specialist agent persona for discussion */
+function agentForGate(gate: GateId): "campaign-planning" | "content-planning" | "rollout" | undefined {
+  if (gate === "H1" || gate === "H2") return "campaign-planning";
+  if (gate === "H-C") return "content-planning";
+  if (gate === "H3") return "rollout";
+  return undefined; // H4 uses Orchestrator (default)
+}
 
 const GATE_COPY: Record<string, { title: string; body: string; reviewerHint: string; discussionPrompt: string }> = {
   H1: {
-    title: "Gate H1 · Plan Approval",
-    body: "Strategy agent has generated a CampaignPlan. Review the strategy, discuss any concerns with the agent, then approve, request changes, or reject.",
-    reviewerHint: "Approving authorizes content generation across all channels and locales.",
-    discussionPrompt: "I've drafted the campaign plan. What aspects would you like to discuss? Channel mix? Budget allocation? Audience targeting? I can explain any decision and revise based on your input.",
+    title: "Gate H1 · Brief Approval",
+    body: "Campaign Planning agent has structured the brief. Review the campaign objectives, audience, channels, and budget before strategy generation begins.",
+    reviewerHint: "Approving locks the brief and authorizes the Strategy agent to generate the full campaign plan across all 5 workstreams.",
+    discussionPrompt: "I've structured the brief. What aspects would you like to discuss? Campaign objectives? Target audience? Budget allocation? Channel selection?",
   },
   H2: {
-    title: "Gate H2 · QA Approval",
-    body: "QA agent has reviewed all content variants. Review the flagged items, discuss resolutions, then approve or request fixes.",
-    reviewerHint: "Approve once all flagged variants are resolved or accepted as-is.",
-    discussionPrompt: "QA complete. I found some brand-voice concerns. Would you like me to walk through each one, or shall I auto-fix and show you the changes?",
+    title: "Gate H2 · Plan Review",
+    body: "Strategy agent has generated the complete Campaign Plan across all 5 workstreams: Paid Media, HOL Journey, Email Strategy, Social/HN, and cross-channel synthesis. Review the plan before content creation begins.",
+    reviewerHint: "Approve to authorize content generation. Request changes to revise the strategy.",
+    discussionPrompt: "The Campaign Plan is ready. I can walk you through each workstream — paid media channel mix, HOL customer journey, email sequence, or social strategy. What would you like to discuss?",
   },
-  "H-legal": {
-    title: "Gate H-legal · EU Compliance Review",
-    body: "Strategy agent proposed this extra gate because DACH markets require legal sign-off on technical claims.",
-    reviewerHint: "Verify torque claims match product spec; confirm no medical/safety claims requiring CE disclosure.",
-    discussionPrompt: "I've flagged the technical claims that need legal review. Would you like me to pull the product spec sheet for comparison, or shall we go claim by claim?",
+  "H-C": {
+    title: "Gate H-C · Creative Approval",
+    body: "Content agent has generated ad copy variants based on the approved plan. Review the creative assets — headlines, body copy, CTAs — before they are localized and built into live platforms.",
+    reviewerHint: "Approve to authorize localization and rollout. This is the last gate before creative is built into ad platforms.",
+    discussionPrompt: "The creative assets are ready for review. I can show you each variant by locale, explain the creative choices, or walk through the brand-voice QA results. What would you like to see?",
   },
   H3: {
-    title: "Gate H3 · Publish Confirm",
-    body: "Roll-out agent staged all publishes. Confirm to go live.",
-    reviewerHint: "Deterministic publish — no creative drift between approval and ad set.",
-    discussionPrompt: "All variants are staged and ready. I can show you the exact ad preview for each market before we publish. Want to spot-check any specific locale or variant?",
+    title: "Gate H3 · QA Disposition",
+    body: "Roll-out agent has staged all publishes. QA has validated the built campaign against the approved plan. Review QA results and confirm before go-live.",
+    reviewerHint: "Approve to go live. This is the last gate before campaign launch.",
+    discussionPrompt: "All variants are staged and QA'd. I can show you the exact ad preview for each market before we publish. Want to spot-check any specific locale or variant?",
   },
   H4: {
     title: "Gate H4 · Promote Learning",
-    body: "Insights agent proposes promoting a new skill to the global registry.",
+    body: "Insights agent proposes promoting a new skill to the global registry from this campaign's learnings.",
     reviewerHint: "Approving makes the skill active for future campaigns across all markets.",
     discussionPrompt: "This campaign surfaced a pattern I think we should encode as a reusable skill. Let me explain why, and you can decide whether to promote it globally or keep it campaign-scoped.",
   },
 };
 
-interface Message {
-  id: string;
-  from: "agent" | "human";
-  text: string;
-  timestamp: string;
-}
 
 export function GatePanel({ gate }: { gate: GateId }) {
   const decideGate = useWorkspace((s) => s.decideGate);
@@ -48,6 +52,9 @@ export function GatePanel({ gate }: { gate: GateId }) {
   const appliedFixes = useWorkspace((s) => s.appliedFixes);
   const setProposalDisposition = useWorkspace((s) => s.setProposalDisposition);
   const planRationale = useWorkspace((s) => s.plan.rationale);
+  const brief = useWorkspace((s) => s.brief);
+  const variants = useWorkspace((s) => s.variants);
+  const qaResults = useWorkspace((s) => s.qaResults);
 
   const [showSignoff, setShowSignoff] = useState(false);
   const [signoffAction, setSignoffAction] = useState<"approved" | "changes_requested" | "rejected">("approved");
@@ -55,9 +62,59 @@ export function GatePanel({ gate }: { gate: GateId }) {
   const [signoffNote, setSignoffNote] = useState("");
   const [signed, setSigned] = useState(false);
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [discussionInput, setDiscussionInput] = useState("");
   const [discussionStarted, setDiscussionStarted] = useState(false);
+  const [openingSent, setOpeningSent] = useState(false);
+
+  const agentType = agentForGate(gate);
+
+  // Build context for the discussion AI
+  const context = useMemo(
+    () => ({
+      campaign: brief.campaign,
+      product: brief.product,
+      market: brief.market,
+      locales: brief.locales,
+      currentPhase: gate,
+      phaseLabel: `Gate ${gate} discussion`,
+      variantCount: variants.length,
+      qaSummary: qaResults.length > 0 ? `${qaResults.filter(r => r.judge.verdict === "pass").length}/${qaResults.length} passed` : "n/a",
+      lastRationale: planRationale?.decided ?? "none",
+    }),
+    [brief.campaign, brief.product, brief.market, brief.locales, gate, variants.length, qaResults, planRationale?.decided],
+  );
+
+  const contextRef = useRef(context);
+  useEffect(() => { contextRef.current = context; }, [context]);
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/agent-chat",
+        prepareSendMessagesRequest: ({ messages }) => ({
+          body: { messages, agentType, context: contextRef.current },
+        }),
+      }),
+    [agentType],
+  );
+
+  const { messages: aiMessages, sendMessage: aiSend, status: aiStatus } = useChat({ transport });
+
+  const aiBusy = aiStatus === "submitted" || aiStatus === "streaming";
+
+  // Send the static opening message once, then hand off to AI for follow-ups
+  const sendDiscussionMessage = () => {
+    const text = discussionInput.trim();
+    if (!text || aiBusy) return;
+    setDiscussionInput("");
+    // First message in thread: send opening prompt context
+    if (!openingSent) {
+      setOpeningSent(true);
+      aiSend({ text: `Context: ${copy.discussionPrompt}\n\nUser question: ${text}` });
+    } else {
+      aiSend({ text });
+    }
+  };
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const copy = GATE_COPY[gate] ?? {
@@ -66,51 +123,16 @@ export function GatePanel({ gate }: { gate: GateId }) {
     reviewerHint: "",
     discussionPrompt: "What would you like to discuss?",
   };
-  const h2NeedsFix = gate === "H2" && !appliedFixes.has("v_1_de-DE");
+  const h2NeedsFix = gate === "H3" && !appliedFixes.has("v_1_de-DE");
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages]);
 
-  // Start discussion with agent's opening message
+  // Start discussion — the first message is the static prompt; subsequent are AI
   const startDiscussion = () => {
     if (discussionStarted) return;
     setDiscussionStarted(true);
-    const now = new Date().toLocaleTimeString();
-    setMessages([
-      {
-        id: "agent_open",
-        from: "agent",
-        text: copy.discussionPrompt,
-        timestamp: now,
-      },
-    ]);
-  };
-
-  const sendMessage = () => {
-    const text = discussionInput.trim();
-    if (!text) return;
-    const now = new Date().toLocaleTimeString();
-    setMessages((prev) => [
-      ...prev,
-      { id: `human_${Date.now()}`, from: "human", text, timestamp: now },
-    ]);
-    setDiscussionInput("");
-
-    // Simulate agent response after a brief delay
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        H1: getH1Response(text, planRationale.decided),
-        H2: `Good question. Let me check the flagged variants and get back to you with specifics. The main concern is brand-voice compliance — I found ${text.includes("how many") ? "1 variant" : "some phrases"} that need attention.`,
-        "H-legal": `I've cross-referenced the technical claims against the product spec. The torque specification is accurate per the SIW 6AT-A22 datasheet. No medical or safety claims were detected. ${text.includes("CE") ? "CE compliance is confirmed for all DACH markets." : ""}`,
-        H3: `All ${useWorkspace.getState().variants.length} variants are staged correctly. Each ad set matches the approved plan — same creative, same targeting, same budget. Ready when you are.`,
-        H4: `This skill would prevent the brand-voice violation we saw in this campaign. If promoted globally, future campaigns would automatically flag similar phrases before they reach QA. Impact: ~12 hours saved per campaign.`,
-      };
-      const resp = responses[gate] || "Let me look into that and get back to you with specifics.";
-      const respNow = new Date().toLocaleTimeString();
-      setMessages((prev) => [
-        ...prev,
-        { id: `agent_${Date.now()}`, from: "agent", text: resp, timestamp: respNow },
-      ]);
-    }, 1000 + Math.random() * 1500);
+    // Send the opening prompt to AI to get a contextual first response
+    aiSend({ text: copy.discussionPrompt });
   };
 
   const openSignoff = (action: "approved" | "changes_requested" | "rejected") => {
@@ -169,36 +191,46 @@ export function GatePanel({ gate }: { gate: GateId }) {
           {discussionStarted && (
             <>
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
-                {messages.map((m) => (
-                  <div key={m.id} className={`flex gap-3 ${m.from === "human" ? "flex-row-reverse" : ""}`}>
-                    <div className={`shrink-0 size-6 rounded-full flex items-center justify-center font-mono text-[8px] font-bold text-white ${
-                      m.from === "agent" ? "bg-foreground" : "bg-hilti"
-                    }`}>
-                      {m.from === "agent" ? "AI" : "U"}
+                {aiMessages.map((m) => {
+                  const isUser = m.role === "user";
+                  const text = typeof m.content === "string" ? m.content : (m.parts?.map((p: any) => p.text ?? "").join("") ?? "");
+                  return (
+                    <div key={m.id} className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+                      <div className={`shrink-0 size-6 rounded-full flex items-center justify-center font-mono text-[8px] font-bold text-white ${
+                        isUser ? "bg-hilti" : "bg-foreground"
+                      }`}>
+                        {isUser ? "U" : "AI"}
+                      </div>
+                      <div className={`rounded-sm px-3 py-2 text-xs max-w-[80%] ${
+                        isUser ? "bg-hilti text-white" : "bg-background border border-border"
+                      }`}>
+                        <p className="leading-relaxed whitespace-pre-wrap">{text}</p>
+                      </div>
                     </div>
-                    <div className={`rounded-sm px-3 py-2 text-xs max-w-[80%] ${
-                      m.from === "agent" ? "bg-background border border-border" : "bg-hilti text-white"
-                    }`}>
-                      <p className="leading-relaxed">{m.text}</p>
-                      <p className={`mt-1 font-mono text-[8px] ${m.from === "human" ? "text-white/60" : "text-muted-foreground"}`}>
-                        {m.timestamp}
-                      </p>
+                  );
+                })}
+                {aiBusy && (
+                  <div className="flex gap-3">
+                    <div className="shrink-0 size-6 rounded-full flex items-center justify-center font-mono text-[8px] font-bold text-white bg-foreground">AI</div>
+                    <div className="rounded-sm px-3 py-2 text-xs bg-background border border-border">
+                      <span className="animate-pulse text-muted-foreground">Thinking…</span>
                     </div>
                   </div>
-                ))}
+                )}
                 <div ref={chatEndRef} />
               </div>
               <div className="flex items-center gap-2 border-t border-border px-4 py-2">
                 <input
                   value={discussionInput}
                   onChange={(e) => setDiscussionInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                  onKeyDown={(e) => e.key === "Enter" && sendDiscussionMessage()}
                   placeholder="Ask about the plan, suggest changes, discuss tradeoffs…"
                   className="flex-1 rounded-sm border border-border bg-background px-3 py-1.5 text-xs focus:border-hilti focus:outline-none"
+                  disabled={aiBusy}
                 />
                 <button
-                  onClick={sendMessage}
-                  disabled={!discussionInput.trim()}
+                  onClick={sendDiscussionMessage}
+                  disabled={!discussionInput.trim() || aiBusy}
                   className="rounded-sm bg-foreground px-3 py-1.5 font-mono text-[10px] font-bold text-white hover:bg-hilti disabled:opacity-30"
                 >
                   Send
@@ -208,7 +240,7 @@ export function GatePanel({ gate }: { gate: GateId }) {
           )}
         </div>
 
-        {/* H2 auto-fix */}
+        {/* H3 auto-fix */}
         {h2NeedsFix && (
           <div className="mb-4 flex items-center justify-between rounded-sm border border-hilti/20 bg-hilti-soft px-3 py-2 text-xs">
             <span>1 unresolved blocker on v_1_de-DE</span>
@@ -337,21 +369,4 @@ export function GatePanel({ gate }: { gate: GateId }) {
       )}
     </>
   );
-}
-
-function getH1Response(question: string, planSummary: string): string {
-  const q = question.toLowerCase();
-  if (q.includes("linkedin") || q.includes("channel")) {
-    return `Good question about channels. I chose Meta as the hero channel because contractor segments index 3.2x higher there vs LinkedIn for power-tool campaigns (DACH_Meta_2025_Q3 benchmarks). LinkedIn would add ~€15k to reach the same audience. If you want multi-channel, I can split 70/30 Meta/LinkedIn — would increase budget by ~€12k but give us A/B data on which channel converts better. Want me to revise?`;
-  }
-  if (q.includes("budget") || q.includes("cost") || q.includes("spend")) {
-    return `The €${(142500).toLocaleString()} budget breaks down as: 70% Meta paid-social (€100k), 15% creative production (€21k), 10% localization (€14k), 5% contingency (€7k). Projected 4.35x ROAS based on comparable DACH power-tool campaigns. If you want to reduce, I'd suggest cutting variants from 4 to 3 (saves ~€8k in production) rather than reducing media spend.`;
-  }
-  if (q.includes("audience") || q.includes("target") || q.includes("who")) {
-    return `I'm targeting DACH contractor segment — site foremen and finishing crews, aged 28-55, who value precision and durability over price. This segment over-indexes on Meta (68% daily active) and responds best to technical-feature creative (torque specs, runtime data) rather than lifestyle imagery. If you want to add specifiers/engineers, I'd recommend LinkedIn as a secondary channel.`;
-  }
-  if (q.includes("kpi") || q.includes("metric") || q.includes("measure")) {
-    return `Projected KPIs: 1,861 conversions at €76.30 CPA, 4.35x ROAS, 2.8% CTR (above the 2.1% DACH benchmark for industrial tools). These are plan projections based on comparable campaigns — actual performance depends on creative quality and market conditions. I've built in a 15% variance buffer.`;
-  }
-  return `That's a fair point. The current plan has ${planSummary.slice(0, 80)}… — I'm happy to revise any aspect. What specifically would you like changed? I can adjust channels, budget split, audience targeting, variant count, or locale strategy.`;
 }

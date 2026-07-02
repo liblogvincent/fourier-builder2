@@ -133,3 +133,69 @@ export function downloadJSON(data: string, filename: string): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+/** CSV export: one row per variant + QA summary */
+export function exportCampaignCSV(state: ExportState): string {
+  const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+
+  // Variants sheet
+  const headers = ["id", "channel", "segment", "locale", "headline", "primary_text", "cta", "image_ref"];
+  const rows = [headers.join(",")];
+
+  for (const v of state.variants) {
+    rows.push([
+      escape(v.id),
+      escape(v.channel),
+      escape(v.segment),
+      escape(v.locale),
+      escape(v.headline),
+      escape(v.primary_text),
+      escape(v.cta),
+      escape(v.imageRef || ""),
+    ].join(","));
+  }
+
+  rows.push(""); // blank separator
+
+  // QA summary
+  rows.push("QA Results");
+  rows.push(["variant_id", "verdict", "score", "flagged_phrase", "reason"].join(","));
+  for (const q of state.qaResults) {
+    rows.push([
+      escape(q.variant_id),
+      escape(q.judge.verdict),
+      q.judge.score,
+      escape(q.judge.flagged_phrase || ""),
+      escape(q.judge.reason || ""),
+    ].join(","));
+  }
+
+  rows.push(""); // blank separator
+
+  // Connector calls
+  rows.push("Connector Calls");
+  rows.push(["connector", "action", "target", "status", "variant_id"].join(","));
+  for (const c of state.connectorCalls) {
+    rows.push([
+      escape(c.connector),
+      escape(c.action),
+      escape(c.target),
+      escape(c.status),
+      escape(c.variant_id),
+    ].join(","));
+  }
+
+  return rows.join("\n");
+}
+
+export function downloadCSV(data: string, filename: string): void {
+  const blob = new Blob([data], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

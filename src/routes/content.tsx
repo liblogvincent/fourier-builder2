@@ -11,6 +11,7 @@ import { FigmaPushPanel } from "@/components/content/FigmaPushPanel";
 import { AgencyUploadZone } from "@/components/content/AgencyUploadZone";
 import { openPptxInNewTab } from "@/lib/html-pptx";
 import { listSkills } from "@/lib/persistence";
+import { exportCampaign, exportCampaignCSV, downloadJSON, downloadCSV } from "@/lib/export";
 import { useState, useMemo, useEffect } from "react";
 import {
   brief as refBrief,
@@ -31,6 +32,7 @@ function ContentDashboard() {
   const brief = useWorkspace((s) => s.brief);
   const plan = useWorkspace((s) => s.plan);
   const variants = useWorkspace((s) => s.variants);
+  const localeDiffs = useWorkspace((s) => s.localeDiffs);
   const phase = useWorkspace((s) => s.phase);
   const rationaleStream = useWorkspace((s) => s.rationaleStream);
 
@@ -85,6 +87,24 @@ function ContentDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => {
+                const state = { brief: effectiveBrief, plan: effectivePlan, variants: effectiveVariants, localeDiffs: useReference ? [] : localeDiffs, qaResults: [], connectorCalls: [], proposal: null as any, gateDecisions: {}, rationaleStream: [] };
+                downloadJSON(exportCampaign(state), `${effectiveBrief.id}_export.json`);
+              }}
+              className="rounded-sm border border-border bg-white px-3 py-1.5 font-mono text-[9px] font-bold uppercase hover:bg-black/5"
+            >
+              Export JSON ↓
+            </button>
+            <button
+              onClick={() => {
+                const state = { brief: effectiveBrief, plan: effectivePlan, variants: effectiveVariants, localeDiffs: useReference ? [] : localeDiffs, qaResults: [], connectorCalls: [], proposal: null as any, gateDecisions: {}, rationaleStream: [] };
+                downloadCSV(exportCampaignCSV(state), `${effectiveBrief.id}_variants.csv`);
+              }}
+              className="rounded-sm border border-border bg-white px-3 py-1.5 font-mono text-[9px] font-bold uppercase hover:bg-black/5"
+            >
+              Export CSV ↓
+            </button>
+            <button
               onClick={() => openPptxInNewTab({ brief: effectiveBrief, plan: effectivePlan, variants: effectiveVariants, variantCount: effectiveVariants.length || 4, localeCount: effectiveBrief.locales.length })}
               className="rounded-sm border border-border bg-white px-3 py-1.5 font-mono text-[9px] font-bold uppercase hover:bg-black/5"
             >
@@ -129,7 +149,8 @@ function ContentDashboard() {
         {/* ── TIER 2: VARIATIONS ── */}
         <VariationsTier
           hasContent={tier2Complete}
-          onGenerate={() => {}}
+          variants={effectiveVariants}
+          onGenerate={() => useWorkspace.getState().advance()}
           onImport={() => document.getElementById("agency-upload-section")?.scrollIntoView({ behavior: "smooth" })}
         />
 
@@ -151,7 +172,8 @@ function ContentDashboard() {
         <LocalTier
           hasContent={tier4Complete}
           effectiveVariants={effectiveVariants}
-          onGenerate={() => {}}
+          localeDiffs={useReference ? [] : localeDiffs}
+          onGenerate={() => useWorkspace.getState().advance()}
           onImport={() => document.getElementById("agency-upload-section")?.scrollIntoView({ behavior: "smooth" })}
         />
 

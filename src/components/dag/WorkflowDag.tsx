@@ -9,7 +9,7 @@ const phaseToActiveNode = (phase: Phase): string | null => {
   if (phase === "localization") return "n_locale";
   if (phase === "qa") return "n_qa";
   if (phase === "H2") return "n_h2";
-  if (phase === "H-legal") return "n_h_legal";
+  if (phase === "H-C") return "n_hc";
   if (phase === "rollout") return "n_rollout";
   if (phase === "H3") return "n_h3";
   if (phase === "live") return "n_live";
@@ -21,12 +21,12 @@ const phaseOrder: Phase[] = [
   "brief",
   "planning",
   "H1",
-  "content",
-  "localization",
-  "qa",
   "H2",
-  "H-legal",
+  "content",
+  "H-C",
+  "localization",
   "rollout",
+  "qa",
   "H3",
   "live",
   "H4",

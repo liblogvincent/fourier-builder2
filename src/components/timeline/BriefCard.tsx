@@ -11,6 +11,26 @@ Budget: €142,500
 Channels: Meta (hero), LinkedIn (secondary)
 Timeline: Q4 2026, 8-week flight`;
 
+/** Fallback regex extraction when LLM is unavailable */
+function regexExtract(text: string) {
+  const extract = (pattern: RegExp, fallback: string) => {
+    const m = text.match(pattern);
+    return m ? m[1].trim() : fallback;
+  };
+  return {
+    campaign: extract(/Campaign:\s*(.+)/, "New Campaign"),
+    product: extract(/Product:\s*(.+)/, ""),
+    market: extract(/Market:\s*(.+)/, "DACH"),
+    audience: extract(/Audience:\s*(.+)/, ""),
+    objective: extract(/Objective:\s*(.+)/, ""),
+    channels: text.toLowerCase().includes("linkedin") ? ["meta", "linkedin"] as string[] : ["meta"] as string[],
+    locales: text.includes("fr-CH") ? ["de-DE", "de-AT", "de-CH", "fr-CH"] as string[] :
+             text.includes("de-CH") ? ["de-DE", "de-AT", "de-CH"] as string[] :
+             text.includes("de-AT") ? ["de-DE", "de-AT"] as string[] : ["de-DE"] as string[],
+    budget_usd: parseInt(extract(/Budget:\s*€?\$?\s*([\d,]+)/, "0").replace(/,/g, "")) || 0,
+  };
+}
+
 export function BriefCard() {
   const brief = useWorkspace((s) => s.brief);
   const phase = useWorkspace((s) => s.phase);
@@ -19,33 +39,80 @@ export function BriefCard() {
   const [open, setOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [structured, setStructured] = useState(false);
+  const [extracting, setExtracting] = useState(false);
 
   const isEmpty = !brief.product && !brief.campaign;
   const isNew = brief.campaign === "New Campaign" || isEmpty;
 
-  const handleStructure = () => {
+  const handleStructure = async () => {
     const text = freeText.trim();
     if (!text) return;
-    // Simple extraction from free text (prototype — production uses LLM)
-    const extract = (pattern: RegExp, fallback: string) => {
-      const m = text.match(pattern);
-      return m ? m[1].trim() : fallback;
-    };
+    setExtracting(true);
+
+    try {
+      // Try LLM extraction via agent-chat
+      const res = await fetch("/api/agent-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentType: "campaign-planning",
+          messages: [
+            {
+              role: "user",
+              content: `Extract these fields from this campaign brief as a JSON object with keys: campaign, product, market, audience, objective, channels (array of lowercase strings: meta, linkedin, google), locales (array like ["de-DE"]), budget_usd (number, convert to USD if needed).\n\nBrief text:\n${text}\n\nReturn ONLY the JSON object, no other text.`,
+            },
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        // Read the streaming response
+        const reader = res.body?.getReader();
+        let fullText = "";
+        if (reader) {
+          const decoder = new TextDecoder();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            fullText += decoder.decode(value, { stream: true });
+          }
+        }
+
+        // Try to parse JSON from the response
+        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          loadBrief({
+            id: `brief_${Date.now()}`,
+            campaign: parsed.campaign || "New Campaign",
+            product: parsed.product || "",
+            market: parsed.market || "DACH",
+            audience: parsed.audience || "",
+            objective: parsed.objective || "",
+            channels: Array.isArray(parsed.channels) ? parsed.channels : ["meta"],
+            locales: Array.isArray(parsed.locales) ? parsed.locales : ["de-DE"],
+            budget_usd: typeof parsed.budget_usd === "number" ? parsed.budget_usd : 0,
+            assumptions: parsed.assumptions || [],
+          });
+          setStructured(true);
+          setExtracting(false);
+          return;
+        }
+      }
+      // If LLM fails, fall through to regex
+    } catch {
+      // LLM unavailable — fall through to regex
+    }
+
+    // Fallback: regex extraction
+    const fields = regexExtract(text);
     loadBrief({
       id: `brief_${Date.now()}`,
-      campaign: extract(/Campaign:\s*(.+)/, "New Campaign"),
-      product: extract(/Product:\s*(.+)/, ""),
-      market: extract(/Market:\s*(.+)/, "DACH"),
-      audience: extract(/Audience:\s*(.+)/, ""),
-      objective: extract(/Objective:\s*(.+)/, ""),
-      channels: text.toLowerCase().includes("linkedin") ? ["meta", "linkedin"] : ["meta"],
-      locales: text.includes("fr-CH") ? ["de-DE", "de-AT", "de-CH", "fr-CH"] :
-               text.includes("de-CH") ? ["de-DE", "de-AT", "de-CH"] :
-               text.includes("de-AT") ? ["de-DE", "de-AT"] : ["de-DE"],
-      budget_usd: parseInt(extract(/Budget:\s*€?\$?\s*([\d,]+)/, "0").replace(/,/g, "")) || 0,
+      ...fields,
       assumptions: [],
     });
     setStructured(true);
+    setExtracting(false);
   };
 
   const handleSendToStrategy = () => {
@@ -97,10 +164,10 @@ export function BriefCard() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleStructure}
-                  disabled={!freeText.trim()}
+                  disabled={!freeText.trim() || extracting}
                   className="rounded-sm bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-white hover:bg-hilti disabled:opacity-30"
                 >
-                  Structure Brief (A0)
+                  {extracting ? "Structuring with AI…" : "Structure Brief (A0)"}
                 </button>
                 <button
                   onClick={() => setFreeText(EXAMPLE_BRIEF)}
@@ -110,7 +177,7 @@ export function BriefCard() {
                 </button>
               </div>
               <p className="font-mono text-[8px] text-muted-foreground">
-                In production, A0 would use an LLM to extract campaign, product, audience, objective, budget, channels, and locales. Here we use simple regex extraction for the prototype.
+                A0 uses AI to extract campaign, product, audience, objective, budget, channels, and locales from free text. Falls back to regex if the AI is unavailable.
               </p>
             </div>
           ) : (

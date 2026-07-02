@@ -11,8 +11,8 @@ const AGENTS: { id: AgentName; label: string; glyph: string; phase: Phase }[] = 
 ];
 
 const ORDER: Phase[] = [
-  "brief", "planning", "H1", "content", "localization", "qa",
-  "H2", "H-legal", "rollout", "H3", "live", "H4", "done",
+  "brief", "planning", "H1", "H2", "content", "H-C", "localization", "rollout", "qa",
+  "H3", "live", "H4", "done",
 ];
 
 export function AgentConstellation() {

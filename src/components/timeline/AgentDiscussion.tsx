@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useWorkspace } from "@/store/workspace";
 import { CAMPAIGN_PLANNING_PROMPT } from "@/lib/agent-prompts";
 import type { Phase } from "@/types";
@@ -16,7 +18,16 @@ const PHASE_GUIDANCE: Record<string, { agent: string; message: string; suggestio
   },
   H1: {
     agent: "Campaign Planning",
-    message: "The Campaign Plan (Epic 1, A0-A5) is ready. This covers 5 RMB workstreams: Paid Media Campaign Planning (A1-A2), HOL Customer Journey (A3), Email Campaign Planning (A4), and Organic Social/HN Campaign Planning (A5). I recommend discussing each workstream before approving at H1.",
+    message: "The brief has been structured. Review the campaign objectives, target audience, hero product, offer, and high-level channel direction. Approve to authorize full strategy generation across all 5 workstreams.",
+    suggestions: [
+      "Is the audience definition complete?",
+      "Should we add or remove channels?",
+      "Is the budget range appropriate?",
+    ],
+  },
+  H2: {
+    agent: "Campaign Planning",
+    message: "The Campaign Plan (Epic 1, A0-A5) is ready. This covers 5 RMB workstreams: Paid Media Campaign Planning (A1-A2), HOL Customer Journey (A3), Email Campaign Planning (A4), and Organic Social/HN Campaign Planning (A5). I recommend discussing each workstream before approving at H2.",
     suggestions: [
       "Show me the paid media plan (channel mix, budget, KPIs)",
       "What's the HOL customer journey?",
@@ -33,6 +44,15 @@ const PHASE_GUIDANCE: Record<string, { agent: string; message: string; suggestio
       "Can you generate an image concept for variant 1?",
     ],
   },
+  "H-C": {
+    agent: "Content",
+    message: "The creative assets are ready for review. Review the ad copy variants before they are localized and built into live platforms. This is the last gate before creative goes to build.",
+    suggestions: [
+      "Show me each variant by locale",
+      "Walk through the brand-voice QA results",
+      "Are there any compliance concerns?",
+    ],
+  },
   localization: {
     agent: "Localization",
     message: "I've adapted all variants to the target locales. I made market-specific adjustments where needed — de-CH leads with durability instead of safety, and fr-CH is fully translated.",
@@ -43,58 +63,73 @@ const PHASE_GUIDANCE: Record<string, { agent: string; message: string; suggestio
   },
   qa: {
     agent: "QA",
-    message: "I've run structural checks and a brand-voice review on all variants. Any flagged items are shown above.",
+    message: "I've run structural checks and a brand-voice review on all variants. The built campaign has been validated against the approved plan. Any flagged items are shown above.",
     suggestions: ["Show me the full QA report", "What needs to be fixed?"],
   },
 };
 
 export function AgentDiscussion() {
   const phase = useWorkspace((s) => s.phase);
+  const brief = useWorkspace((s) => s.brief);
   const agentBusy = useWorkspace((s) => s.agentBusy);
-  const [messages, setMessages] = useState<{ from: "agent" | "user"; text: string }[]>([]);
-  const [input, setInput] = useState("");
+  const variants = useWorkspace((s) => s.variants);
+  const qaResults = useWorkspace((s) => s.qaResults);
+  const stream = useWorkspace((s) => s.rationaleStream);
 
   const guidance = PHASE_GUIDANCE[phase];
   const agentName = agentBusy || guidance?.agent || "Orchestrator";
+  const lastRationale = stream[stream.length - 1];
 
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
-    setMessages((prev) => [...prev, { from: "user", text }]);
+  const context = useMemo(
+    () => ({
+      campaign: brief.campaign,
+      product: brief.product,
+      market: brief.market,
+      locales: brief.locales,
+      currentPhase: phase,
+      phaseLabel: guidance?.message ?? "",
+      variantCount: variants.length,
+      qaSummary: qaResults.length > 0 ? `${qaResults.filter(r => r.judge.verdict === "pass").length}/${qaResults.length} passed` : "n/a",
+      lastRationale: lastRationale?.decided ?? "none",
+    }),
+    [brief.campaign, brief.product, brief.market, brief.locales, phase, guidance?.message, variants.length, qaResults, lastRationale?.decided],
+  );
+
+  const contextRef = useRef(context);
+  useEffect(() => { contextRef.current = context; }, [context]);
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/agent-chat",
+        prepareSendMessagesRequest: ({ messages }) => ({
+          body: { messages, agentType: "campaign-planning", context: contextRef.current },
+        }),
+      }),
+    [],
+  );
+
+  const { messages, sendMessage, status } = useChat({ transport });
+  const [input, setInput] = useState("");
+  const [initialPromptSent, setInitialPromptSent] = useState(false);
+
+  // Auto-fire initial prompt on mount
+  useEffect(() => {
+    if (!initialPromptSent && guidance && guidance.suggestions.length > 0) {
+      setInitialPromptSent(true);
+      const timer = setTimeout(() => {
+        sendMessage({ text: `Introduce yourself and explain what you're working on for this phase: ${phase}. Briefly summarize the campaign context and suggest what we should discuss.` });
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, initialPromptSent, guidance, sendMessage]);
+
+  const busy = status === "submitted" || status === "streaming";
+
+  const handleSend = (text: string) => {
+    if (!text.trim() || busy) return;
+    sendMessage({ text });
     setInput("");
-    // Simulate agent response
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        "paid media": `**Paid Media Plan (A1-A2):**\n\nHero channel: Meta paid-social (contractor segments index 3.2× higher vs LinkedIn).\n\nBudget: €142,500 total\n- 70% Meta (€100k): 4 campaigns × 4 ad sets × 4 creatives\n- 15% Creative production (€21k)\n- 10% Localization (€14k)\n- 5% Contingency (€7k)\n\nProjected KPIs: 1,861 conversions at €76.30 CPA, 4.35× ROAS, 2.8% CTR (benchmark: 2.1%).\n\nAudience: DACH contractors, site foremen, finishing crews, aged 28-55.\n\nKeywords: 80+ DE keywords (Google 50% / LinkedIn 30% / Meta 20% split).\n\nTesting roadmap: A/B test torque vs durability messaging in weeks 1-2, then scale winner.`,
-
-        "hol": `**HOL Customer Journey (A3):**\n\nThe campaign drives traffic to a dedicated promotional landing page on hilti.de (and .at, .ch, .li).\n\nEntry paths:\n1. Meta ad click → Promo LP with dealer locator CTA\n2. Google search → Product page with promo banner\n3. Direct type-in → Homepage hero banner → Promo LP\n4. Email click → Promo LP\n\nRequired assets:\n- 1 Promotional Landing Page (Contentful, Promo template)\n- 3 Hero banners (homepage, category page, product page)\n- 2 Hardcoded banners (registration flow, cart page)\n- Dealer locator deep-link integration\n\nAll assets rebuilt per MO space (Contentful constraint: no cross-space copy).`,
-
-        "email": `**Email Campaign Planning (A4):**\n\nSegments:\n1. Active contractors (purchased power tools in last 12mo)\n2. Lapsed contractors (no purchase in 12+ mo)\n3. Specifiers/engineers (decision-makers, lower volume)\n\nSequence:\n- Email 1 (Launch): "The torque control you've been asking for" → Promo LP\n- Email 2 (Week 2): "See what DACH foremen are saying" → Social proof + case study\n- Email 3 (Week 4): "Last chance — 10% off ends Friday" → Urgency\n\nTesting: Subject line A/B test (technical vs emotional), send time optimization.\n\nRequires: SFMC automation + journey build, segmentation queries on Marketing Cloud Data Extensions.`,
-
-        "social": `**Organic Social & HN Campaign Planning (A5):**\n\nHilti Owned Channels:\n- LinkedIn: 2 posts/week — technical deep-dive (torque control engineering) + jobsite story (foreman testimonial)\n- Instagram: 1 post/week — visual-first, jobsite photography, tool-in-action reels\n- YouTube: 1 video — 15s product demo (same as paid creative)\n\nHilti Network:\n- 3 posts across network partners\n- Localized per market (DE/AT/CH)\n- Format: 9×16 Stories, 1×1 Feed, 16×9 LinkedIn\n\nContent pillars: Precision, Durability, Productivity — same as Master Story.\n\nAll assets created on Figma, pushed to Sprinklr for scheduling.\n\nR2: Sprinklr direct access replaces social listening via online search.`,
-
-        "why did you choose meta": `I chose Meta as the hero channel because contractor segments in DACH index 3.2× higher on Meta vs LinkedIn for power-tool campaigns (DACH_Meta_2025_Q3 benchmarks). Meta also offers better creative format flexibility for video + static combinations. LinkedIn would add ~€15k to reach the same audience size. If you want multi-channel, I can split 70/30 Meta/LinkedIn — would increase budget by ~€12k.`,
-
-        "budget": `The €142,500 budget breaks down as: 70% Meta paid-social (€100k), 15% creative production (€21k), 10% localization (€14k), 5% contingency (€7k). Projected ROAS is 4.35× based on comparable DACH power-tool campaigns. If you want to reduce, I'd suggest cutting variants from 4 to 3 (saves ~€8k) rather than reducing media spend.`,
-
-        "kpi": `Projected KPIs: 1,861 conversions at €76.30 CPA, 4.35× ROAS, 2.8% CTR (above the 2.1% DACH benchmark for industrial tools). These are plan projections — actual performance depends on creative quality and market conditions. I've built in a 15% variance buffer.`,
-
-        "variant": `I chose 4 base variants to give statistical power for first-pass creative learning. Each variant tests a different angle: torque control (technical), runtime/battery life (practical), jobsite durability (emotional), and total cost of ownership (financial). With 4 variants × 4 locales = 16 total ads, we can identify which message resonates best per market within the first 2 weeks.`,
-
-        "explain": `I generated 4 creative concepts focused on torque-control and dust-compliance for the DACH contractor segment. Each concept emphasizes a different value proposition: precision, durability, productivity, and platform compatibility. The brand voice follows Hilti v4.2 guidelines — no hype adjectives, technical-first messaging.`,
-
-        "change": `Let me walk through the market-specific changes. For de-CH (Switzerland German), I swapped safety-led messaging for durability-led because CH contractor segments over-index on heritage and longevity cues (CH_Market_Heritage_Playbook_v2). For fr-CH, I did a full French translation while preserving SKU codes. de-AT is lexically identical to de-DE with no changes needed.`,
-
-        "qa report": `Here's the QA summary: 15 of 16 variants passed all checks. Variant v_1_de-DE was flagged for using "revolutionäre" which is on the Hilti brand-voice blacklist for iterative hardware updates. The suggested replacement is "leistungsstarke" (high-performance). Would you like me to auto-fix it?`,
-      };
-
-      const q = text.toLowerCase();
-      let response = "That's a great question. Let me look into the details and get back to you with specifics. In the meantime, would you like to review any other aspect of the ";
-      response += phase === "H1" ? "plan?" : phase === "content" ? "creative concepts?" : "output?";
-      for (const [key, val] of Object.entries(responses)) {
-        if (q.includes(key)) { response = val; break; }
-      }
-      setMessages((prev) => [...prev, { from: "agent", text: response }]);
-    }, 800 + Math.random() * 1200);
   };
 
   return (
@@ -105,14 +140,14 @@ export function AgentDiscussion() {
         </div>
         <div>
           <p className="text-sm font-semibold text-gravel">
-            {agentName} {agentBusy && <span className="text-hilti animate-pulse ml-1">· thinking…</span>}
+            {agentName} {busy && <span className="text-hilti animate-pulse ml-1">· thinking…</span>}
           </p>
           <p className="text-xs text-muted-foreground">Campaign Planning Agent · Phase: {phase}</p>
         </div>
         <span className="ml-auto rounded-full bg-maize/20 px-2.5 py-1 text-[11px] font-medium text-gravel">Epic 1</span>
       </div>
 
-      {/* Agent guidance + suggestions */}
+      {/* Agent guidance + suggestions (shown when no AI messages yet) */}
       {messages.length === 0 && guidance && (
         <div className="p-5 space-y-3">
           <p className="text-sm leading-relaxed text-gravel">{guidance.message}</p>
@@ -121,8 +156,9 @@ export function AgentDiscussion() {
               {guidance.suggestions.map((s) => (
                 <button
                   key={s}
-                  onClick={() => sendMessage(s)}
-                  className="rounded-full border border-border bg-white px-3 py-1.5 text-xs hover:border-maize hover:bg-maize/5 transition-all"
+                  onClick={() => handleSend(s)}
+                  disabled={busy}
+                  className="rounded-full border border-border bg-white px-3 py-1.5 text-xs hover:border-maize hover:bg-maize/5 transition-all disabled:opacity-50"
                 >
                   {s}
                 </button>
@@ -140,19 +176,23 @@ export function AgentDiscussion() {
         </div>
       )}
 
-      {/* Chat messages */}
+      {/* AI chat messages */}
       {messages.length > 0 && (
-        <div className="max-h-64 overflow-y-auto p-4 space-y-3">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex gap-2 ${m.from === "user" ? "flex-row-reverse" : ""}`}>
-              <div className={`shrink-0 size-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${m.from === "agent" ? "bg-gravel" : "bg-hilti"}`}>
-                {m.from === "agent" ? "AI" : "U"}
+        <div className="max-h-80 overflow-y-auto p-4 space-y-3">
+          {messages.map((m) => {
+            const isUser = m.role === "user";
+            const text = typeof m.content === "string" ? m.content : (m.parts?.map((p: any) => p.text ?? "").join("") ?? "");
+            return (
+              <div key={m.id} className={`flex gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
+                <div className={`shrink-0 size-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${isUser ? "bg-hilti" : "bg-gravel"}`}>
+                  {isUser ? "U" : "AI"}
+                </div>
+                <div className={`rounded-lg px-4 py-2.5 text-sm max-w-[80%] ${isUser ? "bg-hilti text-white" : "bg-maize/10 border border-maize/20"}`}>
+                  <p className="leading-relaxed whitespace-pre-wrap">{text}</p>
+                </div>
               </div>
-              <div className={`rounded-lg px-4 py-2.5 text-sm max-w-[80%] ${m.from === "agent" ? "bg-maize/10 border border-maize/20" : "bg-hilti text-white"}`}>
-                <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -161,13 +201,14 @@ export function AgentDiscussion() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-          placeholder={phase === "H1" ? "Discuss the plan before approving…" : phase === "brief" ? "Describe your campaign idea…" : "Ask the agent a question…"}
+          onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
+          placeholder={phase === "H1" ? "Discuss the brief before approving…" : phase === "H2" ? "Discuss the plan before approving…" : phase === "brief" ? "Describe your campaign idea…" : "Ask the agent a question…"}
           className="flex-1 rounded-sm border border-border bg-background px-3 py-1.5 text-xs focus:border-hilti focus:outline-none"
+          disabled={busy}
         />
         <button
-          onClick={() => sendMessage(input)}
-          disabled={!input.trim()}
+          onClick={() => handleSend(input)}
+          disabled={!input.trim() || busy}
           className="rounded-sm bg-foreground px-3 py-1.5 font-mono text-[9px] font-bold text-white hover:bg-hilti disabled:opacity-30"
         >
           Send

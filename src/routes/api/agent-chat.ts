@@ -6,6 +6,11 @@ import {
   buildOrchestratorContext,
   type ContextSnapshot,
 } from "@/lib/orchestrator-prompt";
+import {
+  CAMPAIGN_PLANNING_PROMPT,
+  CONTENT_PLANNING_PROMPT,
+  ROLLOUT_PROMPT,
+} from "@/lib/agent-prompts";
 
 type ContextBody = {
   campaign?: string;
@@ -26,6 +31,8 @@ type ContextBody = {
 type Body = {
   messages: UIMessage[];
   context?: ContextBody;
+  /** Specialist agent type — if set, uses that agent's system prompt instead of Orchestrator */
+  agentType?: "campaign-planning" | "content-planning" | "rollout";
 };
 
 export const Route = createFileRoute("/api/agent-chat")({
@@ -39,7 +46,7 @@ export const Route = createFileRoute("/api/agent-chat")({
           return new Response("No AI gateway configured. Set LLM_580_API_KEY and LLM_580_BASE_URL environment variables.", { status: 500 });
         }
 
-        const { messages, context } = (await request.json()) as Body;
+        const { messages, context, agentType } = (await request.json()) as Body;
         if (!Array.isArray(messages))
           return new Response("messages required", { status: 400 });
 
@@ -61,9 +68,55 @@ export const Route = createFileRoute("/api/agent-chat")({
           runMode: context?.runMode ?? "n/a",
         };
 
-        const system = `${buildOrchestratorSystemPrompt()}
+        // Select system prompt based on agent type
+        let system: string;
+        if (agentType === "campaign-planning") {
+          system = `${CAMPAIGN_PLANNING_PROMPT}
+
+## Current Campaign State
+- Campaign: ${snapshot.campaign}
+- Product: ${snapshot.product}
+- Market: ${snapshot.market}
+- Locales: ${snapshot.locales.join(", ") || "none"}
+- Current Phase: ${snapshot.currentPhase} — ${snapshot.phaseLabel}
+- Gates Passed: ${snapshot.gatesPassed.join(", ") || "none"}
+- Variant Count: ${snapshot.variantCount}
+- QA Summary: ${snapshot.qaSummary}
+- Last Agent Decision: ${snapshot.lastRationale}
+
+You are speaking with the campaign strategist. Be thorough but scannable. Cite specific numbers and benchmarks. Welcome counter-proposals and revisions.`;
+        } else if (agentType === "content-planning") {
+          system = `${CONTENT_PLANNING_PROMPT}
+
+## Current Campaign State
+- Campaign: ${snapshot.campaign}
+- Product: ${snapshot.product}
+- Market: ${snapshot.market}
+- Locales: ${snapshot.locales.join(", ") || "none"}
+- Current Phase: ${snapshot.currentPhase} — ${snapshot.phaseLabel}
+- Variant Count: ${snapshot.variantCount}
+- Last Agent Decision: ${snapshot.lastRationale}
+
+You are speaking with the content team. Walk through the Creative Concept (Big Idea, Look & Feel, Key Visual), cross-channel requirements table, storyboard directions, and Figma board mapping. Discuss each section before asking for approval.`;
+        } else if (agentType === "rollout") {
+          system = `${ROLLOUT_PROMPT}
+
+## Current Campaign State
+- Campaign: ${snapshot.campaign}
+- Product: ${snapshot.product}
+- Market: ${snapshot.market}
+- Locales: ${snapshot.locales.join(", ") || "none"}
+- Current Phase: ${snapshot.currentPhase} — ${snapshot.phaseLabel}
+- Variant Count: ${snapshot.variantCount}
+- QA Summary: ${snapshot.qaSummary}
+- Last Agent Decision: ${snapshot.lastRationale}
+
+You are speaking with the campaign operations manager. Show publishing status, QA results, UTM tracking, and optimization recommendations. Be clear about what is simulated vs real.`;
+        } else {
+          system = `${buildOrchestratorSystemPrompt()}
 
 ${buildOrchestratorContext(snapshot)}`;
+        }
 
         const modelId = process.env.LLM_MODEL || "gpt-5.4";
 

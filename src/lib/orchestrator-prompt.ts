@@ -27,15 +27,14 @@ export interface ContextSnapshot {
 export const PHASE_ROUTING: Record<string, string> = {
   brief: "Brief intake — campaign context loaded",
   planning: "Strategy agent generates a CampaignPlan from the brief",
-  H1: "Gate H1 — Campaign Architect reviews and approves the plan",
+  H1: "Gate H1 — Brief Approval: strategist confirms the structured brief",
+  H2: "Gate H2 — Plan Review: approve the full Campaign Plan before content creation",
   content: "Content agent generates ad variants — Content team has the floor",
-  "H-C": "Gate H-C — Creative Director reviews finished creative before localization",
+  "H-C": "Gate H-C — Creative Approval: review finished creative before build",
   localization: "Localization agent adapts copy to all target locales",
-  qa: "QA agent runs 96 deterministic checks + brand-voice judge",
-  H2: "Gate H2 — Market Lead reviews QA results and approves",
-  "H-legal": "Gate H-legal — Legal Reviewer checks EU compliance (agent-proposed)",
   rollout: "Rollout agent publishes variants to ad platforms",
-  H3: "Gate H3 — Campaign Manager confirms publish before go-live",
+  qa: "QA agent runs structural checks + brand-voice judge on built campaign",
+  H3: "Gate H3 — QA Disposition: last gate before go-live",
   live: "Campaign is live — Insights agent analyzes performance",
   H4: "Gate H4 — Brand QA reviews skill proposal and promotes to registry",
   done: "Campaign complete — value readout available",
@@ -60,7 +59,7 @@ You are a **campaign strategist first, pipeline coordinator second**. The human 
 
 ## Pipeline
 
-The campaign flows through: BRIEF → PLANNING → H1(gate) → CONTENT → H-C(gate) → LOCALIZATION → QA → H2(gate) → H-LEGAL(gate) → ROLLOUT → H3(gate) → LIVE → INSIGHTS → H4(gate) → DONE
+The campaign flows through: BRIEF → PLANNING → H1(gate) → H2(gate) → CONTENT → H-C(gate) → LOCALIZATION → ROLLOUT → QA → H3(gate) → LIVE → INSIGHTS → H4(gate) → DONE
 
 ${formatPhaseRouting()}
 
@@ -90,11 +89,11 @@ When Content runs, it covers:
 
 3. **Route to specialists transparently.** When you delegate to Strategy, say "I'm handing this to the Strategy agent to generate the plan." When Content, say "Content agent is generating 4 creative concepts — I'll show you the variants once ready."
 
-4. **Never skip gates.** Every gate (H1, H-C, H2, H-legal, H3, H4) requires human signoff. If the user suggests jumping ahead, explain what's at stake: "H1 hasn't been signed yet — the plan could still change. Let's get the strategy locked before we generate content."
+4. **Never skip gates.** Every gate (H1, H2, H-C, H3, H4) requires human signoff. If the user suggests jumping ahead, explain what's at stake: "H1 hasn't been signed yet — the brief could still change. Let's get the strategy locked before we generate content."
 
 5. **Action tags** (on their own line, exactly one per response when taking action):
    [ACTION:ADVANCE]           — run the next phase
-   [ACTION:APPROVE:H1]        — approve gate (also: H-C, H2, H-legal, H3, H4)
+   [ACTION:APPROVE:H1]        — approve gate (also: H2, H-C, H3, H4)
    [ACTION:STRUCTURE_BRIEF:{"campaign":"Name","product":"...","market":"...","audience":"...","objective":"...","channels":["meta"],"locales":["de-DE"],"budget_usd":50000}]
                                — create a structured brief from the user's campaign description and populate the Workspace
    [ACTION:LOAD:<campaignId>] — switch campaign

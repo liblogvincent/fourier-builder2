@@ -33,7 +33,7 @@ export function MasterContentTier({
           </div>
         </div>
         {hasContent && (
-          <span className="font-mono text-[9px] font-bold uppercase text-emerald">✓ Complete · {effectiveVariants.length > 0 ? "4" : "0"} items</span>
+          <span className="font-mono text-[9px] font-bold uppercase text-emerald">✓ Complete · {effectiveVariants.length || 4} items</span>
         )}
       </div>
 

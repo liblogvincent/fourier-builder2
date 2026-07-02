@@ -1,13 +1,14 @@
-import type { AdVariant } from "@/types";
+import type { AdVariant, LocaleDiffEntry } from "@/types";
 
 interface LocalTierProps {
   hasContent: boolean; // Tier 3 complete?
   effectiveVariants: AdVariant[];
+  localeDiffs: LocaleDiffEntry[];
   onGenerate: () => void;
   onImport: () => void;
 }
 
-export function LocalTier({ hasContent, effectiveVariants, onGenerate, onImport }: LocalTierProps) {
+export function LocalTier({ hasContent, effectiveVariants, localeDiffs, onGenerate, onImport }: LocalTierProps) {
   if (!hasContent) {
     return (
       <section className="rounded-sm border-2 border-dashed border-border bg-background/50 opacity-60">
@@ -64,11 +65,21 @@ export function LocalTier({ hasContent, effectiveVariants, onGenerate, onImport 
         {/* Locale diff summary */}
         <div className="mt-4 rounded-sm border border-border bg-background p-3">
           <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground mb-2">Locale Adaptations</p>
-          <div className="space-y-1 text-[10px]">
-            <p><span className="font-bold">de-DE → de-AT:</span> Lexicon identical to DE master</p>
-            <p><span className="font-bold">de-DE → de-CH:</span> Safety cues swapped for durability/heritage (CH contractor preference)</p>
-            <p><span className="font-bold">de-DE → fr-CH:</span> Full French translation · SKU codes preserved</p>
-          </div>
+          {localeDiffs.length > 0 ? (
+            <div className="space-y-1 text-[10px]">
+              {localeDiffs.slice(0, 6).map((d, i) => (
+                <p key={i}>
+                  <span className="font-bold">{d.locale}:</span> "{d.base_phrase}" → "{d.localized_phrase}" · {d.reason}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1 text-[10px]">
+              <p><span className="font-bold">de-DE → de-AT:</span> Lexicon identical to DE master</p>
+              <p><span className="font-bold">de-DE → de-CH:</span> Safety cues swapped for durability/heritage (CH contractor preference)</p>
+              <p><span className="font-bold">de-DE → fr-CH:</span> Full French translation · SKU codes preserved</p>
+            </div>
+          )}
         </div>
       </div>
 

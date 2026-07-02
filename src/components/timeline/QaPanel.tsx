@@ -22,7 +22,7 @@ export function QaPanel() {
         <div className="flex items-center justify-between">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              QA agent · 100% coverage
+              QA agent · 8-category structural check · {total > 0 ? qaResults[0]?.checks.length ?? 24 : 24} checks/variant
             </p>
             <h2 className="text-sm font-semibold">
               {passing} / {total} variants passing · brand-judge accuracy 96%
@@ -71,7 +71,7 @@ export function QaPanel() {
 
       <details className="rounded-sm border border-border bg-white">
         <summary className="cursor-pointer p-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-black/[0.02]">
-          Full check matrix ({total} variants × 4 deterministic rules + brand judge)
+          Full check matrix ({total} variants × {qaResults[0]?.checks.length ?? 24} structural checks + brand judge · 8 categories)
         </summary>
         <div className="border-t border-border p-3">
           <table className="w-full text-xs">

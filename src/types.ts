@@ -78,6 +78,7 @@ export interface DeterministicCheck {
   rule: string;
   result: "pass" | "fail";
   detail?: string;
+  category?: string; // 8-category QA grouping
 }
 
 export interface BrandJudge {
@@ -149,12 +150,12 @@ export type Phase =
   | "brief"
   | "planning"
   | "H1"
-  | "content"
-  | "localization"
-  | "qa"
   | "H2"
-  | "H-legal"
+  | "content"
+  | "H-C"
+  | "localization"
   | "rollout"
+  | "qa"
   | "H3"
   | "live"
   | "H4"

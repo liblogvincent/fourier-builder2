@@ -1,27 +1,15 @@
-import { useState } from "react";
-
-interface Variation {
-  id: string;
-  type: "video" | "image" | "copy_block";
-  label: string;
-  derivedFrom: string;
-}
+import type { AdVariant } from "@/types";
 
 interface VariationsTierProps {
   hasContent: boolean; // Tier 1 complete?
+  variants: AdVariant[];
   onGenerate: () => void;
   onImport: () => void;
 }
 
-const MOCK_VARIATIONS: Variation[] = [
-  { id: "var_1", type: "video", label: "15s product demo", derivedFrom: "Master Story" },
-  { id: "var_2", type: "video", label: "30s testimonial cut", derivedFrom: "Master Story" },
-  { id: "var_3", type: "image", label: "Hero jobsite shot", derivedFrom: "Key Visual" },
-  { id: "var_4", type: "copy_block", label: "Torque-control headline set", derivedFrom: "Master Story" },
-];
-
-export function VariationsTier({ hasContent, onGenerate, onImport }: VariationsTierProps) {
-  const [variations] = useState<Variation[]>(hasContent ? MOCK_VARIATIONS : []);
+export function VariationsTier({ hasContent, variants, onGenerate, onImport }: VariationsTierProps) {
+  // Derive variations from real variant data
+  const baseVariants = [...new Map(variants.map(v => [v.headline, v])).values()]; // unique by headline
 
   if (!hasContent) {
     return (
@@ -30,6 +18,21 @@ export function VariationsTier({ hasContent, onGenerate, onImport }: VariationsT
           <span className="rounded-sm bg-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-foreground/60">CP3</span>
           <p className="mt-2 text-sm font-semibold text-muted-foreground">Creative Briefing & Storyboarding — Locked</p>
           <p className="mt-1 text-xs text-muted-foreground">Complete CP1 Creative Concept to unlock storyboards, shotlists, and production plans.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (baseVariants.length === 0) {
+    return (
+      <section className="rounded-sm border-2 border-dashed border-border bg-background/50">
+        <div className="px-4 py-6 text-center">
+          <span className="rounded-sm bg-amber px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">CP3</span>
+          <p className="mt-2 text-sm font-semibold">Creative Briefing & Storyboarding</p>
+          <p className="mt-1 text-xs text-muted-foreground">No variants yet. Generate content to populate storyboards and variations.</p>
+          <button onClick={onGenerate} className="mt-3 rounded-sm bg-amber px-3 py-1.5 font-mono text-[9px] font-bold uppercase text-white hover:bg-amber/90">
+            ⟡ Generate Variations
+          </button>
         </div>
       </section>
     );
@@ -45,19 +48,18 @@ export function VariationsTier({ hasContent, onGenerate, onImport }: VariationsT
             <p className="font-mono text-[9px] text-muted-foreground">Storyboards · Shotlists · Scripts · Production Plans · Derived from CP1 Creative Concept</p>
           </div>
         </div>
-        <span className="font-mono text-[9px] font-bold uppercase text-emerald">✓ {variations.length} variations</span>
+        <span className="font-mono text-[9px] font-bold uppercase text-emerald">✓ {baseVariants.length} variations</span>
       </div>
 
       <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-        {variations.map((v) => (
+        {baseVariants.map((v) => (
           <div key={v.id} className="rounded-sm border border-border bg-background p-3">
             <div className="flex items-center gap-2 mb-2">
-              <span className={`rounded-sm px-1 py-0.5 font-mono text-[7px] font-bold uppercase text-white ${
-                v.type === "video" ? "bg-blue" : v.type === "image" ? "bg-purple" : "bg-emerald"
-              }`}>{v.type}</span>
-              <span className="font-mono text-[8px] text-muted-foreground">← {v.derivedFrom}</span>
+              <span className="rounded-sm px-1 py-0.5 font-mono text-[7px] font-bold uppercase text-white bg-emerald">copy</span>
+              <span className="font-mono text-[8px] text-muted-foreground">← {v.locale}</span>
             </div>
-            <p className="text-xs font-semibold">{v.label}</p>
+            <p className="text-xs font-semibold truncate">{v.headline}</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground truncate">{v.primary_text.slice(0, 50)}…</p>
             <div className="mt-2 flex items-center gap-1">
               <span className="font-mono text-[7px] text-muted-foreground">Formats: 9×16, 16×9, 1×1, 4×5</span>
             </div>

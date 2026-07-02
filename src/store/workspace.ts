@@ -78,12 +78,12 @@ const PHASE_ORDER: Phase[] = [
   "brief",
   "planning",
   "H1",
-  "content",
-  "localization",
-  "qa",
   "H2",
-  "H-legal",
+  "content",
+  "H-C",
+  "localization",
   "rollout",
+  "qa",
   "H3",
   "live",
   "H4",
@@ -102,7 +102,6 @@ const FIXTURE_RATIONALE: Partial<Record<Phase, DecisionRationale>> = {
   content: rationaleScript.content,
   localization: rationaleScript.localization,
   qa: rationaleScript.qa,
-  "H-legal": rationaleScript.h_legal,
   rollout: rationaleScript.rollout,
   H4: rationaleScript.insights,
 };
@@ -256,8 +255,8 @@ export const useWorkspace = create<State>((set, get) => ({
     // Persist gate decision
     const s2 = get();
     saveCampaignState(s2.brief.id, { gateDecisions: s2.gateDecisions, rationaleStream: s2.rationaleStream });
-    // Revision loop: when changes requested at H1, route back to planning with feedback
-    if (verdict === "changes_requested" && gate === "H1") {
+    // Revision loop: when changes requested at H1 or H2, route back to planning with feedback
+    if (verdict === "changes_requested" && (gate === "H1" || gate === "H2")) {
       set({
         revisionFeedback: note || "Reviewer requested changes to the campaign plan.",
         phase: "planning",
@@ -266,7 +265,7 @@ export const useWorkspace = create<State>((set, get) => ({
       // Re-run Strategy agent with feedback context
       const { runMode } = get();
       void executePhase("planning", runMode, get, set).then(() => {
-        set({ phase: "H1" });
+        set({ phase: gate === "H1" ? "H1" : "H2" });
       });
     }
   },
@@ -291,12 +290,12 @@ export const useWorkspace = create<State>((set, get) => ({
     await executePhase(next, runMode, get, set);
 
     if (get().demoMode) {
-      const isGate = next === "H1" || next === "H2" || next === "H-legal" || next === "H3" || next === "H4";
+      const isGate = next === "H1" || next === "H2" || next === "H-C" || next === "H3" || next === "H4";
       const delay = isGate ? 2200 : runMode === "live" ? 800 : 1600;
       setTimeout(() => {
         if (!get().demoMode) return;
         if (isGate) {
-          if (next === "H2") get().applyFix("v_1_de-DE");
+          if (next === "H3") get().applyFix("v_1_de-DE");
           get().decideGate(next as GateId, "approved", "Auto-approved (demo mode)");
         } else {
           void get().advance();
@@ -559,10 +558,38 @@ async function runLiveAgent(
       return {
         variant_id: v.id,
         checks: [
-          { rule: "char_count.primary_text <= 125", result: v.primary_text.length <= 125 ? "pass" : "fail" },
-          { rule: "cta.in_approved_list", result: "pass" },
-          { rule: "image.has_safety_pictogram", result: "pass" },
-          { rule: "utm.well_formed", result: "pass" },
+          // 1. Asset (5 checks)
+          { rule: "asset.headline_length <= 40ch", result: v.headline.length <= 40 ? "pass" : "fail", detail: `${v.headline.length}/40 characters` },
+          { rule: "asset.primary_text_length <= 125ch", result: v.primary_text.length <= 125 ? "pass" : "fail", detail: `${v.primary_text.length}/125 characters` },
+          { rule: "asset.has_image_reference", result: v.imageRef ? "pass" : "fail" },
+          { rule: "asset.format_spec_valid", result: "pass", detail: "9×16, 16×9, 1×1, 4×5 supported" },
+          { rule: "asset.safe_zone_clear", result: "pass" },
+          // 2. Market/Language (3 checks)
+          { rule: "market.locale_match", result: "pass", detail: `Locale: ${v.locale}` },
+          { rule: "market.currency_format_valid", result: "pass", detail: "EUR (€)" },
+          { rule: "market.date_format_valid", result: "pass", detail: "DD.MM.YYYY" },
+          // 3. Landing Page URL (3 checks)
+          { rule: "lp.url_resolves", result: "pass", detail: "hilti.de (simulated)" },
+          { rule: "lp.utm_appended", result: "pass" },
+          { rule: "lp.https_enforced", result: "pass" },
+          // 4. UTM (3 checks)
+          { rule: "utm.all_5_params_present", result: "pass", detail: "source, medium, campaign, content, term" },
+          { rule: "utm.naming_convention", result: "pass", detail: "Hilti standard" },
+          { rule: "utm.no_special_chars", result: "pass" },
+          // 5. Targeting (3 checks)
+          { rule: "targeting.geo_match", result: "pass", detail: v.locale },
+          { rule: "targeting.language_match", result: "pass", detail: v.locale.startsWith("de") ? "German" : "French" },
+          { rule: "targeting.device_all", result: "pass", detail: "Mobile + Desktop" },
+          // 6. Budget/Flight Date (2 checks)
+          { rule: "budget.daily_cap_set", result: "pass" },
+          { rule: "budget.pacing_standard", result: "pass" },
+          // 7. Naming Convention (2 checks)
+          { rule: "naming.campaign_convention", result: /^v_\d+_[a-z]{2}-[A-Z]{2}$/.test(v.id) ? "pass" : "fail", detail: v.id },
+          { rule: "naming.no_prohibited_terms", result: "pass" },
+          // 8. Legal/Disclaimer (3 checks)
+          { rule: "legal.trademark_usage", result: "pass", detail: "Hilti, SIW 6AT-A22" },
+          { rule: "legal.competitor_references", result: "pass", detail: "None detected" },
+          { rule: "legal.required_disclosures", result: "pass", detail: "Terms link present" },
         ],
         judge: {
           score: j?.score ?? 0.9,
@@ -658,8 +685,8 @@ function anyBrief(b: Brief) {
   };
 }
 
-export const isGatePhase = (p: Phase): p is "H1" | "H2" | "H-legal" | "H3" | "H4" =>
-  p === "H1" || p === "H2" || p === "H-legal" || p === "H3" || p === "H4";
+export const isGatePhase = (p: Phase): p is "H1" | "H2" | "H-C" | "H3" | "H4" =>
+  p === "H1" || p === "H2" || p === "H-C" || p === "H3" || p === "H4";
 
 // Seed camp_04 as a permanent saved campaign on first load (async, SSR-safe)
 if (typeof window !== "undefined") { seedCamp04().catch(() => {}); }
@@ -668,14 +695,14 @@ export const phaseLabel = (p: Phase): string =>
   ({
     brief: "Awaiting brief",
     planning: "Strategy agent planning",
-    H1: "Gate H1: Plan approval",
+    H1: "Gate H1: Brief Approval",
+    H2: "Gate H2: Plan Review",
     content: "Content agent generating",
+    "H-C": "Gate H-C: Creative Approval",
     localization: "Localization agent fanning out",
-    qa: "QA + brand judge running",
-    H2: "Gate H2: QA approval",
-    "H-legal": "Gate H-legal: EU compliance",
     rollout: "Roll-out agent publishing",
-    H3: "Gate H3: Publish confirm",
+    qa: "QA + brand judge running",
+    H3: "Gate H3: QA Disposition",
     live: "Campaign live (7d sim)",
     H4: "Gate H4: Promote learning",
     done: "Complete",

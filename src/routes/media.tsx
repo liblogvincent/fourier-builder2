@@ -4,6 +4,7 @@ import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { useWorkspace } from "@/store/workspace";
 import { useMemo, useState } from "react";
 import { RolloutAgent } from "@/components/media/RolloutAgent";
+import { exportCampaign, exportCampaignCSV, downloadJSON, downloadCSV } from "@/lib/export";
 import {
   brief as refBrief,
   plan as refPlan,
@@ -127,11 +128,35 @@ function MediaDashboard() {
         <div className="mx-auto w-full max-w-3xl space-y-6 px-6 py-6">
         {/* Header */}
         <header>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Media Workspace</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{effectiveBrief.campaign}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {effectiveBrief.product} · {effectiveBrief.market} · {effectiveBrief.locales.join(" / ")} · Budget: €{(effectiveBrief.budget_usd / 1000).toFixed(0)}k · Phase: {phase}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Media Workspace</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight">{effectiveBrief.campaign}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {effectiveBrief.product} · {effectiveBrief.market} · {effectiveBrief.locales.join(" / ")} · Budget: €{(effectiveBrief.budget_usd / 1000).toFixed(0)}k · Phase: {phase}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const state = { brief: effectiveBrief, plan: effectivePlan, variants: effectiveVariants, localeDiffs: [], qaResults: effectiveQaResults, connectorCalls: effectiveConnectorCalls, proposal: null as any, gateDecisions: {}, rationaleStream: [] };
+                  downloadJSON(exportCampaign(state), `${effectiveBrief.id}_export.json`);
+                }}
+                className="rounded-sm border border-border bg-white px-3 py-1.5 font-mono text-[9px] font-bold uppercase hover:bg-black/5"
+              >
+                Export JSON ↓
+              </button>
+              <button
+                onClick={() => {
+                  const state = { brief: effectiveBrief, plan: effectivePlan, variants: effectiveVariants, localeDiffs: [], qaResults: effectiveQaResults, connectorCalls: effectiveConnectorCalls, proposal: null as any, gateDecisions: {}, rationaleStream: [] };
+                  downloadCSV(exportCampaignCSV(state), `${effectiveBrief.id}_variants.csv`);
+                }}
+                className="rounded-sm border border-border bg-white px-3 py-1.5 font-mono text-[9px] font-bold uppercase hover:bg-black/5"
+              >
+                Export CSV ↓
+              </button>
+            </div>
+          </div>
         </header>
 
         {/* Previous Campaigns reference toggle */}
