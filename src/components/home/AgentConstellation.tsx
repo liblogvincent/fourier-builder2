@@ -34,7 +34,7 @@ export function AgentConstellation() {
           Agent Constellation
         </p>
         <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-          {runMode === "live" ? "● Opus 4.8 · Live" : "Scripted"}
+          {runMode === "live" ? "● 580ai · Live" : "Scripted"}
         </span>
       </div>
 

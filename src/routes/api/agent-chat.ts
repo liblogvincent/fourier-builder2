@@ -65,7 +65,7 @@ export const Route = createFileRoute("/api/agent-chat")({
 
 ${buildOrchestratorContext(snapshot)}`;
 
-        const modelId = process.env.LLM_MODEL || "claude-opus-4-8";
+        const modelId = process.env.LLM_MODEL || "gpt-5.4";
 
         const result = streamText({
           model: gateway(modelId),

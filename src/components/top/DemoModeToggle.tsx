@@ -34,9 +34,9 @@ export function DemoModeToggle() {
         <button
           onClick={() => setRunMode("live")}
           className={`px-2 py-1 ${runMode === "live" ? "bg-emerald text-white" : "text-muted-foreground hover:bg-black/5"}`}
-          title="Real Lovable AI agents via Gateway (claude-opus-4-8)"
+          title="Real Lovable AI agents via Gateway (580ai)"
         >
-          {runMode === "live" ? "● Live AI · Opus 4.8" : "Live AI"}
+          {runMode === "live" ? "● Live AI · 580ai" : "Live AI"}
         </button>
       </div>
 

@@ -3,7 +3,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { createAiGatewayProvider, resolveGatewayConfig } from "./ai-gateway.server";
 
-const MODEL = process.env.LLM_MODEL || "claude-opus-4-8";
+const MODEL = process.env.LLM_MODEL || "gpt-5.4";
 
 function gw() {
   const config = resolveGatewayConfig();
