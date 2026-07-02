@@ -12,9 +12,9 @@ export function LocalTier({ hasContent, effectiveVariants, onGenerate, onImport 
     return (
       <section className="rounded-sm border-2 border-dashed border-border bg-background/50 opacity-60">
         <div className="px-4 py-6 text-center">
-          <span className="rounded-sm bg-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-foreground/60">Tier 4</span>
-          <p className="mt-2 text-sm font-semibold text-muted-foreground">Local Markets — Locked</p>
-          <p className="mt-1 text-xs text-muted-foreground">Complete Tier 3 (Channel Assignment) to localize per market.</p>
+          <span className="rounded-sm bg-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-foreground/60">R8</span>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">Content Localization — Locked</p>
+          <p className="mt-1 text-xs text-muted-foreground">Complete CP2 Cross-Channel Requirements to localize assets per market.</p>
         </div>
       </section>
     );
@@ -34,10 +34,10 @@ export function LocalTier({ hasContent, effectiveVariants, onGenerate, onImport 
     <section className="rounded-sm border-2 border-emerald/30 bg-white">
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-emerald/5">
         <div className="flex items-center gap-3">
-          <span className="rounded-sm bg-emerald px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">Tier 4</span>
+          <span className="rounded-sm bg-emerald px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">R8</span>
           <div>
-            <p className="text-sm font-bold">Local — Market Versions</p>
-            <p className="font-mono text-[9px] text-muted-foreground">"What does it say in each market?" · {effectiveVariants.length} localized assets</p>
+            <p className="text-sm font-bold">Content Localization</p>
+            <p className="font-mono text-[9px] text-muted-foreground">Static Asset Translation · Transperfect/Weblate · Market-specific adaptations · {effectiveVariants.length} localized assets</p>
           </div>
         </div>
         <span className="font-mono text-[9px] font-bold uppercase text-emerald">✓ {locales.length} markets</span>

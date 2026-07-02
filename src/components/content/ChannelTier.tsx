@@ -30,9 +30,9 @@ export function ChannelTier({ hasContent, effectiveVariants, onGenerate, onImpor
     return (
       <section className="rounded-sm border-2 border-dashed border-border bg-background/50 opacity-60">
         <div className="px-4 py-6 text-center">
-          <span className="rounded-sm bg-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-foreground/60">Tier 3</span>
-          <p className="mt-2 text-sm font-semibold text-muted-foreground">Channel Assignment — Locked</p>
-          <p className="mt-1 text-xs text-muted-foreground">Complete Tier 2 (Variations) to assign content to channels.</p>
+          <span className="rounded-sm bg-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-foreground/60">CP2</span>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">Cross-Channel Content Requirements — Locked</p>
+          <p className="mt-1 text-xs text-muted-foreground">Complete CP3 Storyboarding to compile per-channel asset requirements.</p>
         </div>
       </section>
     );
@@ -48,10 +48,10 @@ export function ChannelTier({ hasContent, effectiveVariants, onGenerate, onImpor
     <section className="rounded-sm border-2 border-blue/30 bg-white">
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-blue/5">
         <div className="flex items-center gap-3">
-          <span className="rounded-sm bg-blue px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">Tier 3</span>
+          <span className="rounded-sm bg-blue px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">CP2</span>
           <div>
-            <p className="text-sm font-bold">Channel — Platform Adaptation</p>
-            <p className="font-mono text-[9px] text-muted-foreground">"Where does each variation go?" · {effectiveVariants.length} assets across channels</p>
+            <p className="text-sm font-bold">Cross-Channel Content Requirements</p>
+            <p className="font-mono text-[9px] text-muted-foreground">Asset list per channel · Format specs · Character counts · Dimensions · {effectiveVariants.length} assets</p>
           </div>
         </div>
         <span className="font-mono text-[9px] font-bold uppercase text-emerald">✓ {paidVariants.length} paid media · {locales.length} locales</span>

@@ -27,9 +27,9 @@ export function VariationsTier({ hasContent, onGenerate, onImport }: VariationsT
     return (
       <section className="rounded-sm border-2 border-dashed border-border bg-background/50 opacity-60">
         <div className="px-4 py-6 text-center">
-          <span className="rounded-sm bg-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-foreground/60">Tier 2</span>
-          <p className="mt-2 text-sm font-semibold text-muted-foreground">Variations — Locked</p>
-          <p className="mt-1 text-xs text-muted-foreground">Complete Tier 1 (Master Content) to unlock content variations.</p>
+          <span className="rounded-sm bg-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-foreground/60">CP3</span>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">Creative Briefing & Storyboarding — Locked</p>
+          <p className="mt-1 text-xs text-muted-foreground">Complete CP1 Creative Concept to unlock storyboards, shotlists, and production plans.</p>
         </div>
       </section>
     );
@@ -39,10 +39,10 @@ export function VariationsTier({ hasContent, onGenerate, onImport }: VariationsT
     <section className="rounded-sm border-2 border-amber/30 bg-white">
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-amber/5">
         <div className="flex items-center gap-3">
-          <span className="rounded-sm bg-amber px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">Tier 2</span>
+          <span className="rounded-sm bg-amber px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">CP3</span>
           <div>
-            <p className="text-sm font-bold">Variations — Content Executions</p>
-            <p className="font-mono text-[9px] text-muted-foreground">"How many ways do we tell the master story?" · Derived from Tier 1</p>
+            <p className="text-sm font-bold">Creative Briefing & Storyboarding</p>
+            <p className="font-mono text-[9px] text-muted-foreground">Storyboards · Shotlists · Scripts · Production Plans · Derived from CP1 Creative Concept</p>
           </div>
         </div>
         <span className="font-mono text-[9px] font-bold uppercase text-emerald">✓ {variations.length} variations</span>

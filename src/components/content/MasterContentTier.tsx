@@ -26,10 +26,10 @@ export function MasterContentTier({
       {/* Tier header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-foreground/5">
         <div className="flex items-center gap-3">
-          <span className="rounded-sm bg-foreground px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">Tier 1</span>
+          <span className="rounded-sm bg-foreground px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-white">CP1</span>
           <div>
-            <p className="text-sm font-bold">Master Content — Creative Concept</p>
-            <p className="font-mono text-[9px] text-muted-foreground">"What is this campaign about?" · Approved at H-C gate</p>
+            <p className="text-sm font-bold">Creative Concept</p>
+            <p className="font-mono text-[9px] text-muted-foreground">Big Idea · Look & Feel · Key Visual · Master Story · Approved at H-C gate</p>
           </div>
         </div>
         {hasContent && (
@@ -158,7 +158,7 @@ export function MasterContentTier({
           ⬆ Import from Figma / DAM
         </button>
         <span className="ml-auto font-mono text-[8px] text-muted-foreground">
-          {hasContent ? "Tier 1 complete — Tier 2 unlocked" : "Start here to unlock Tiers 2-4"}
+          {hasContent ? "CP1 complete — Tier 2 unlocked" : "Start here to unlock Tiers 2-4"}
         </span>
       </div>
     </section>

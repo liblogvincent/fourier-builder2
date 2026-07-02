@@ -142,10 +142,10 @@ function LeftSidebar({ path, onWorkspace, onContent, onMedia }: {
           </span>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[10px]">
-          <TierItem num="1" label="Master Content" active />
-          <TierItem num="2" label="Variations" />
-          <TierItem num="3" label="Channel" />
-          <TierItem num="4" label="Local" />
+          <TierItem num="CP1" label="Creative Concept" active />
+          <TierItem num="CP3" label="Storyboarding" />
+          <TierItem num="CP2" label="Cross-Channel" />
+          <TierItem num="R8" label="Localization" />
           <div className="mt-4 pt-4 border-t border-border space-y-1">
             <p className="px-2 text-[9px] uppercase tracking-wider text-muted-foreground">Actions</p>
             <SideLink to="/workspace" label="← Workspace" />
