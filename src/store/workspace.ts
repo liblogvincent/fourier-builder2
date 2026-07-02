@@ -57,8 +57,10 @@ interface State {
   qaResults: QAResult[];
   connectorCalls: typeof defaultConn;
   proposal: SkillProposal;
+  pendingSkillProposals: SkillProposal[];
 
   setRunMode: (m: RunMode) => void;
+  addPendingSkillProposal: (p: SkillProposal) => void;
   setDemoMode: (on: boolean) => void;
   loadBrief: (b: Brief) => void;
   pushRationale: (r: DecisionRationale) => void;
@@ -125,8 +127,12 @@ export const useWorkspace = create<State>((set, get) => ({
   qaResults: defaultQa,
   connectorCalls: defaultConn,
   proposal: defaultProposal,
+  pendingSkillProposals: [],
 
   setRunMode: (m) => set({ runMode: m }),
+
+  addPendingSkillProposal: (p) =>
+    set((s) => ({ pendingSkillProposals: [...s.pendingSkillProposals, p] })),
 
   setDemoMode: (on) => {
     set({ demoMode: on });
@@ -149,6 +155,7 @@ export const useWorkspace = create<State>((set, get) => ({
       qaResults: defaultQa,
       connectorCalls: defaultConn,
       proposal: defaultProposal,
+      pendingSkillProposals: [],
       agentBusy: null,
       agentError: null,
     }),
@@ -251,6 +258,7 @@ export const useWorkspace = create<State>((set, get) => ({
       proposalDisposition: "pending",
       demoMode: false,
       planMode: true,
+      pendingSkillProposals: [],
       agentBusy: null,
       agentError: null,
     }),
