@@ -1,11 +1,29 @@
-import type { Brief, EvalPoint, RegistryArtifact } from "@/types";
-import { registry as seedRegistry, evalSeries as seedEvals, brief as defaultBrief } from "@/fixtures/camp_04";
+import type { Brief, EvalPoint, RegistryArtifact, CampaignPlan, AdVariant, QAResult, ConnectorCall, DecisionRationale, GateDecision } from "@/types";
+import {
+  registry as seedRegistry,
+  evalSeries as seedEvals,
+  brief as defaultBrief,
+  plan as defaultPlan,
+  variants as defaultVariants,
+  qaResults as defaultQa,
+  connectorCalls as defaultConn,
+} from "@/fixtures/camp_04";
 
 const CAMPAIGNS_KEY = "luban.campaigns";
 const RUNS_KEY = "luban.runs";
 const SKILLS_KEY = "luban.skills";
 const PHASES_KEY = "luban.campaign_phases";
 const ROLE_KEY = "luban.role";
+const STATE_PREFIX = "luban.state.";
+
+interface CampaignState {
+  plan: CampaignPlan;
+  variants: AdVariant[];
+  qaResults: QAResult[];
+  connectorCalls: ConnectorCall[];
+  rationaleStream: DecisionRationale[];
+  gateDecisions: Record<string, GateDecision>;
+}
 
 function safeRead<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -90,4 +108,33 @@ export function getRole(): StoredRole {
 }
 export function setRole(r: StoredRole) {
   safeWrite(ROLE_KEY, r);
+}
+
+// ---- Campaign working state (variants, plan, QA, etc.) ----
+export function saveCampaignState(briefId: string, state: Partial<CampaignState>) {
+  const key = STATE_PREFIX + briefId;
+  const existing = safeRead<CampaignState>(key, {} as CampaignState);
+  safeWrite(key, { ...existing, ...state });
+}
+
+export function loadCampaignState(briefId: string): Partial<CampaignState> {
+  const key = STATE_PREFIX + briefId;
+  return safeRead<Partial<CampaignState>>(key, {});
+}
+
+// ---- Seed camp_04 as a permanent saved campaign ----
+export function seedCamp04() {
+  const campaigns = safeRead<Brief[]>(CAMPAIGNS_KEY, []);
+  if (!campaigns.find((b) => b.id === defaultBrief.id)) {
+    saveCampaign(defaultBrief);
+    // Also seed the demo state so Content/Media pages show data
+    saveCampaignState(defaultBrief.id, {
+      plan: defaultPlan,
+      variants: defaultVariants,
+      qaResults: defaultQa,
+      connectorCalls: defaultConn,
+      rationaleStream: [],
+      gateDecisions: {},
+    });
+  }
 }

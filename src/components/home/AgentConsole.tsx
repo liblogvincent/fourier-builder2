@@ -3,7 +3,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useNavigate } from "@tanstack/react-router";
 import { useWorkspace } from "@/store/workspace";
-import { listCampaigns } from "@/lib/persistence";
+import { listCampaigns, saveCampaign } from "@/lib/persistence";
 import type { GateId } from "@/types";
 import { Send, Sparkles } from "lucide-react";
 
@@ -91,7 +91,7 @@ export function AgentConsole() {
       else if (kind === "STRUCTURE_BRIEF" && arg) {
         try {
           const parsed = JSON.parse(arg);
-          loadBrief({
+          const brief = {
             id: `brief_${Date.now()}`,
             campaign: parsed.campaign || "New Campaign",
             product: parsed.product || "",
@@ -102,7 +102,9 @@ export function AgentConsole() {
             locales: parsed.locales || ["de-DE"],
             budget_usd: parsed.budget_usd || 0,
             assumptions: parsed.assumptions || [],
-          });
+          };
+          saveCampaign(brief);
+          loadBrief(brief);
           void navigate({ to: "/workspace" });
         } catch {
           // If JSON parse fails, still navigate

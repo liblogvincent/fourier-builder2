@@ -28,7 +28,7 @@ import {
   runQa,
   runInsights,
 } from "@/lib/agents.functions";
-import { promoteSkill, recordRun, setBriefPhase } from "@/lib/persistence";
+import { promoteSkill, recordRun, setBriefPhase, saveCampaign, saveCampaignState, loadCampaignState, getBriefPhase, seedCamp04 } from "@/lib/persistence";
 import {
   appendRunEvent,
   nextAttempt,
@@ -135,28 +135,48 @@ export const useWorkspace = create<State>((set, get) => ({
     if (on) void get().advance();
   },
 
-  loadBrief: (b) =>
+  loadBrief: (b) => {
+    // Persist the brief to localStorage
+    saveCampaign(b);
+    // Restore saved working state if it exists
+    const savedState = loadCampaignState(b.id);
+    // Restore last-known phase
+    const savedPhase = getBriefPhase(b.id) as Phase | null;
     set({
       brief: b,
-      phase: "brief",
-      rationaleStream: [],
-      gateDecisions: {},
+      phase: savedPhase ?? "brief",
+      rationaleStream: savedState.rationaleStream ?? [],
+      gateDecisions: savedState.gateDecisions ?? {},
       appliedFixes: new Set(),
       proposalDisposition: "pending",
       campaignStarted: true,
       revisionFeedback: null,
-      // reset working artifacts to the camp_04 fixture shape but with the new brief id
-      plan: { ...defaultPlan, briefId: b.id },
-      variants: defaultVariants,
+      plan: savedState.plan ?? { ...defaultPlan, briefId: b.id },
+      variants: savedState.variants ?? (b.id === defaultBrief.id ? defaultVariants : []),
       localeDiffs: defaultDiffs,
-      qaResults: defaultQa,
-      connectorCalls: defaultConn,
+      qaResults: savedState.qaResults ?? (b.id === defaultBrief.id ? defaultQa : []),
+      connectorCalls: savedState.connectorCalls ?? (b.id === defaultBrief.id ? defaultConn : []),
       proposal: defaultProposal,
       agentBusy: null,
       agentError: null,
-    }),
+    });
+  },
 
-  newCampaign: () =>
+  newCampaign: () => {
+    const id = `brief_${Date.now()}`;
+    const b: Brief = {
+      id,
+      campaign: "New Campaign",
+      product: "",
+      market: "",
+      audience: "",
+      objective: "",
+      channels: ["meta"],
+      locales: ["de-DE"],
+      budget_usd: 0,
+      assumptions: [],
+    };
+    saveCampaign(b);
     set({
       phase: "brief",
       rationaleStream: [],
@@ -167,26 +187,15 @@ export const useWorkspace = create<State>((set, get) => ({
       revisionFeedback: null,
       agentBusy: null,
       agentError: null,
-      brief: {
-        ...defaultBrief,
-        id: `brief_${Date.now()}`,
-        campaign: "New Campaign",
-        product: "",
-        market: "",
-        audience: "",
-        objective: "",
-        channels: ["meta"],
-        locales: ["de-DE"],
-        budget_usd: 0,
-        assumptions: [],
-      },
-      plan: { ...defaultPlan, briefId: `brief_${Date.now()}` },
+      brief: b,
+      plan: { ...defaultPlan, briefId: id },
       variants: [],
       localeDiffs: [],
       qaResults: [],
       connectorCalls: [],
       proposal: defaultProposal,
-    }),
+    });
+  },
 
   pushRationale: (r) =>
     set((s) => ({
@@ -233,6 +242,9 @@ export const useWorkspace = create<State>((set, get) => ({
       }
       void get().advance();
     }
+    // Persist gate decision
+    const s2 = get();
+    saveCampaignState(s2.brief.id, { gateDecisions: s2.gateDecisions, rationaleStream: s2.rationaleStream });
     // Revision loop: when changes requested at H1, route back to planning with feedback
     if (verdict === "changes_requested" && gate === "H1") {
       set({
@@ -367,6 +379,16 @@ async function executePhase(
       durationMs: endedAt - event.startedAt,
       summary: last?.decided,
       rationaleId: last?.id,
+    });
+    // Persist working state after each agent phase
+    const s = get();
+    saveCampaignState(briefId, {
+      plan: s.plan,
+      variants: s.variants,
+      qaResults: s.qaResults,
+      connectorCalls: s.connectorCalls,
+      rationaleStream: s.rationaleStream,
+      gateDecisions: s.gateDecisions,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Agent failed";
@@ -627,6 +649,11 @@ function anyBrief(b: Brief) {
 
 export const isGatePhase = (p: Phase): p is "H1" | "H2" | "H-legal" | "H3" | "H4" =>
   p === "H1" || p === "H2" || p === "H-legal" || p === "H3" || p === "H4";
+
+// Seed camp_04 as a permanent saved campaign on first load
+if (typeof window !== "undefined") {
+  seedCamp04();
+}
 
 export const phaseLabel = (p: Phase): string =>
   ({
