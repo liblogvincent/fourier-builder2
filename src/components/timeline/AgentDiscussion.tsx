@@ -98,30 +98,31 @@ export function AgentDiscussion() {
   };
 
   return (
-    <div className="rounded-sm border border-border bg-white">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <div className="flex size-7 items-center justify-center rounded-full bg-foreground text-white">
-          <span className="font-mono text-[9px] font-bold">{agentName[0]}</span>
+    <div className="rounded-lg border-l-4 border-l-maize border border-border bg-white shadow-sm">
+      <div className="flex items-center gap-3 border-b border-border px-5 py-4 bg-maize/5">
+        <div className="flex size-9 items-center justify-center rounded-full bg-gravel text-white text-sm font-bold">
+          {agentName[0]}
         </div>
         <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-wider">
-            {agentName} Agent {agentBusy && <span className="text-hilti animate-pulse">· thinking…</span>}
+          <p className="text-sm font-semibold text-gravel">
+            {agentName} {agentBusy && <span className="text-hilti animate-pulse ml-1">· thinking…</span>}
           </p>
-          <p className="font-mono text-[8px] text-muted-foreground">Phase: {phase}</p>
+          <p className="text-xs text-muted-foreground">Campaign Planning Agent · Phase: {phase}</p>
         </div>
+        <span className="ml-auto rounded-full bg-maize/20 px-2.5 py-1 text-[11px] font-medium text-gravel">Epic 1</span>
       </div>
 
       {/* Agent guidance + suggestions */}
       {messages.length === 0 && guidance && (
-        <div className="p-4 space-y-3">
-          <p className="text-xs leading-relaxed">{guidance.message}</p>
+        <div className="p-5 space-y-3">
+          <p className="text-sm leading-relaxed text-gravel">{guidance.message}</p>
           {guidance.suggestions.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {guidance.suggestions.map((s) => (
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="rounded-full border border-border bg-background px-2.5 py-1 text-[10px] hover:border-foreground hover:bg-foreground/5 transition-colors"
+                  className="rounded-full border border-border bg-white px-3 py-1.5 text-xs hover:border-maize hover:bg-maize/5 transition-all"
                 >
                   {s}
                 </button>
@@ -144,11 +145,11 @@ export function AgentDiscussion() {
         <div className="max-h-64 overflow-y-auto p-4 space-y-3">
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-2 ${m.from === "user" ? "flex-row-reverse" : ""}`}>
-              <div className={`shrink-0 size-5 rounded-full flex items-center justify-center font-mono text-[7px] font-bold text-white ${m.from === "agent" ? "bg-foreground" : "bg-hilti"}`}>
+              <div className={`shrink-0 size-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${m.from === "agent" ? "bg-gravel" : "bg-hilti"}`}>
                 {m.from === "agent" ? "AI" : "U"}
               </div>
-              <div className={`rounded-sm px-3 py-2 text-xs max-w-[85%] ${m.from === "agent" ? "bg-background border border-border" : "bg-hilti text-white"}`}>
-                <p className="leading-relaxed">{m.text}</p>
+              <div className={`rounded-lg px-4 py-2.5 text-sm max-w-[80%] ${m.from === "agent" ? "bg-maize/10 border border-maize/20" : "bg-hilti text-white"}`}>
+                <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
               </div>
             </div>
           ))}

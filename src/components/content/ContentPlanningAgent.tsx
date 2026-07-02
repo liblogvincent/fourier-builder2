@@ -120,19 +120,16 @@ export function ContentPlanningAgent() {
   };
 
   return (
-    <div className="rounded-sm border-2 border-purple/30 bg-white">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3 bg-purple/5">
-        <div className="flex size-7 items-center justify-center rounded-full bg-purple text-white">
-          <span className="font-mono text-[9px] font-bold">CP</span>
+    <div className="rounded-lg border-l-4 border-l-purple border border-border bg-white shadow-sm">
+      <div className="flex items-center gap-3 border-b border-border px-5 py-4 bg-purple/[0.04]">
+        <div className="flex size-9 items-center justify-center rounded-full bg-purple text-white text-sm font-bold">
+          CP
         </div>
         <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-wider">
-            Content Planning Agent <span className="text-purple/60">· Epic 2 · CP1-CP4</span>
-          </p>
-          <p className="font-mono text-[8px] text-muted-foreground">
-            RMB: Jordon (Creative Manager + Designer + Copywriter) · Today: ~5 days → Target: hours
-          </p>
+          <p className="text-sm font-semibold text-gravel">Content Planning Agent</p>
+          <p className="text-xs text-muted-foreground">RMB: Jordon · Epic 2 (CP1-CP4) · Today: ~5 days → Target: hours</p>
         </div>
+        <span className="ml-auto rounded-full bg-purple/10 px-2.5 py-1 text-[11px] font-medium text-purple">Epic 2</span>
       </div>
 
       {messages.length === 0 && (
