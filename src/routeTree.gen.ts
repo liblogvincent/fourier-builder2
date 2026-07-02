@@ -18,6 +18,7 @@ import { Route as ContentRouteImport } from './routes/content'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent-chat'
+import { Route as ApiSetupRouteImport } from './routes/api/setup'
 import { Route as CampaignsIdHistoryRouteImport } from './routes/campaigns.$id.history'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
@@ -65,6 +66,11 @@ const ApiAgentChatRoute = ApiAgentChatRouteImport.update({
   path: '/api/agent-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSetupRoute = ApiSetupRouteImport.update({
+  id: '/api/setup',
+  path: '/api/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CampaignsIdHistoryRoute = CampaignsIdHistoryRouteImport.update({
   id: '/$id/history',
   path: '/$id/history',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/skills': typeof SkillsRoute
   '/workspace': typeof WorkspaceRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
+  '/api/setup': typeof ApiSetupRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$id/history': typeof CampaignsIdHistoryRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/skills': typeof SkillsRoute
   '/workspace': typeof WorkspaceRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
+  '/api/setup': typeof ApiSetupRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$id/history': typeof CampaignsIdHistoryRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/skills': typeof SkillsRoute
   '/workspace': typeof WorkspaceRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
+  '/api/setup': typeof ApiSetupRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/campaigns/$id/history': typeof CampaignsIdHistoryRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/skills'
     | '/workspace'
     | '/api/agent-chat'
+    | '/api/setup'
     | '/campaigns/new'
     | '/campaigns/$id/history'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/skills'
     | '/workspace'
     | '/api/agent-chat'
+    | '/api/setup'
     | '/campaigns/new'
     | '/campaigns/$id/history'
   id:
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/skills'
     | '/workspace'
     | '/api/agent-chat'
+    | '/api/setup'
     | '/campaigns/new'
     | '/campaigns/$id/history'
   fileRoutesById: FileRoutesById
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   SkillsRoute: typeof SkillsRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
+  ApiSetupRoute: typeof ApiSetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -223,6 +236,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/setup': {
+      id: '/api/setup'
+      path: '/api/setup'
+      fullPath: '/api/setup'
+      preLoaderRoute: typeof ApiSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campaigns/$id/history': {
       id: '/campaigns/$id/history'
       path: '/$id/history'
@@ -256,6 +276,7 @@ const rootRouteChildren: RootRouteChildren = {
   SkillsRoute: SkillsRoute,
   WorkspaceRoute: WorkspaceRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
+  ApiSetupRoute: ApiSetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
