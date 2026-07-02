@@ -49,8 +49,10 @@ Current campaign context:
 - agent working now: ${context?.agentBusy ?? "none"}
 - last agent decision: ${context?.lastRationale ?? "none"}`;
 
+        const modelId = process.env.LLM_MODEL || "claude-opus-4-8";
+
         const result = streamText({
-          model: gateway("google/gemini-3-flash-preview"),
+          model: gateway(modelId),
           system,
           messages: await convertToModelMessages(messages),
         });

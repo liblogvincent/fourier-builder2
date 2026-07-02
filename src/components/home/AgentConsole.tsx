@@ -117,7 +117,7 @@ export function AgentConsole() {
               Orchestrator Agent
             </p>
             <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-              Gemini · Live · steers 6 specialists
+              Opus 4.8 · Live · steers 6 specialists
             </p>
           </div>
         </div>
