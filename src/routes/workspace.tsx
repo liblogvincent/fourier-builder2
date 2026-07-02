@@ -10,6 +10,7 @@ import { RolloutStatus } from "@/components/timeline/RolloutStatus";
 import { LiveTile, ValueReadout } from "@/components/timeline/ValueReadout";
 import { InsightProposal } from "@/components/timeline/InsightProposal";
 import { GatePanel } from "@/components/gates/GatePanel";
+import { AgentDiscussion } from "@/components/timeline/AgentDiscussion";
 import type { Phase } from "@/types";
 
 export const Route = createFileRoute("/workspace")({
@@ -40,6 +41,8 @@ function Workspace() {
     <WorkspaceShell>
       <div className="mx-auto w-full max-w-4xl space-y-6 px-8 py-8">
         <BriefCard />
+
+        <AgentDiscussion />
 
         {reached(phase, "planning") && <PlanCard />}
         {phase === "H1" && <GatePanel gate="H1" />}
