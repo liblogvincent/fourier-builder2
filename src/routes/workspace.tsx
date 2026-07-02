@@ -40,9 +40,9 @@ function Workspace() {
   return (
     <WorkspaceShell>
       <div className="mx-auto w-full max-w-4xl space-y-6 px-8 py-8">
-        <BriefCard />
-
         <AgentDiscussion />
+
+        <BriefCard />
 
         {reached(phase, "planning") && <PlanCard />}
         {phase === "H1" && <GatePanel gate="H1" />}

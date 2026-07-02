@@ -5,8 +5,8 @@ import type { Phase } from "@/types";
 
 const PHASE_GUIDANCE: Record<string, { agent: string; message: string; suggestions: string[] }> = {
   brief: {
-    agent: "Orchestrator",
-    message: "I'm ready to structure your campaign brief. Paste your brief above or type a campaign idea — I'll extract the key details and prepare it for the Campaign Planning agent.",
+    agent: "Campaign Planning",
+    message: "I'm the Campaign Planning Agent (Epic 1). Drop your brief below or describe your campaign idea here — I'll structure it and generate the full strategy across all 5 workstreams: Paid Media, HOL Journey, Email, Social/HN, and cross-channel synthesis.",
     suggestions: ["TE 70, 10% off, DACH, €50k, Q4"],
   },
   planning: {
