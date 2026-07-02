@@ -55,6 +55,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               <NavLink to="/content" active={location.pathname.startsWith("/content")}>
                 Content
               </NavLink>
+              <NavLink to="/media" active={location.pathname.startsWith("/media")}>
+                Media
+              </NavLink>
               <NavLink to="/campaigns" active={location.pathname.startsWith("/campaigns")}>
                 Campaigns
               </NavLink>
