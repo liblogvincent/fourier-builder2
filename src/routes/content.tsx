@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AgentCanvasShell } from "@/components/AgentCanvasShell";
+import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { useWorkspace } from "@/store/workspace";
 import { MasterContentTier } from "@/components/content/MasterContentTier";
 import { ContentPlanningAgent } from "@/components/content/ContentPlanningAgent";
@@ -59,7 +60,7 @@ function ContentDashboard() {
   // Guard
   if (phase === "brief" && brief.campaign === "New Campaign" && !showReference) {
     return (
-      <AgentCanvasShell agent={null} canvas={null}>
+      <WorkspaceShell>
         <div className="mx-auto w-full max-w-5xl px-6 py-20 text-center space-y-4">
           <p className="text-sm text-muted-foreground">No active campaign. Start a campaign first to see content.</p>
           <button onClick={() => setShowReference(true)} className="rounded-sm bg-foreground px-4 py-2 font-mono text-[10px] font-bold uppercase text-white hover:bg-hilti">

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AgentCanvasShell } from "@/components/AgentCanvasShell";
+import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { useWorkspace } from "@/store/workspace";
 import { useMemo, useState } from "react";
 import { RolloutAgent } from "@/components/media/RolloutAgent";
@@ -54,7 +55,7 @@ function MediaDashboard() {
   // Guard: no active campaign (unless showing reference)
   if (phase === "brief" && effectiveBrief.campaign === "New Campaign" && !showReference) {
     return (
-      <AgentCanvasShell agent={null} canvas={null}>
+      <WorkspaceShell>
         <div className="mx-auto w-full max-w-5xl px-6 py-20 text-center">
           <p className="text-sm text-muted-foreground">No active campaign. Start a campaign first to see the media plan.</p>
           <button
