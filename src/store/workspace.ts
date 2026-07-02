@@ -650,10 +650,8 @@ function anyBrief(b: Brief) {
 export const isGatePhase = (p: Phase): p is "H1" | "H2" | "H-legal" | "H3" | "H4" =>
   p === "H1" || p === "H2" || p === "H-legal" || p === "H3" || p === "H4";
 
-// Seed camp_04 as a permanent saved campaign on first load
-if (typeof window !== "undefined") {
-  seedCamp04();
-}
+// Seed camp_04 as a permanent saved campaign on first load (runs once in browser)
+try { seedCamp04(); } catch { /* SSR-safe */ }
 
 export const phaseLabel = (p: Phase): string =>
   ({
