@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { useWorkspace } from "@/store/workspace";
 import { MasterContentTier } from "@/components/content/MasterContentTier";
+import { ContentPlanningAgent } from "@/components/content/ContentPlanningAgent";
 import { VariationsTier } from "@/components/content/VariationsTier";
 import { ChannelTier } from "@/components/content/ChannelTier";
 import { LocalTier } from "@/components/content/LocalTier";
@@ -103,6 +104,9 @@ function ContentDashboard() {
             <span className="font-bold text-amber">Viewing reference:</span> camp_04 — Q4 Power-Tool Push. All 4 tiers shown pre-populated as a template.
           </div>
         )}
+
+        {/* ── CONTENT PLANNING AGENT (Epic 2: CP1-CP4) ── */}
+        <ContentPlanningAgent />
 
         {/* ── TIER 1: MASTER CONTENT ── */}
         <MasterContentTier

@@ -14,13 +14,13 @@ const PHASE_GUIDANCE: Record<string, { agent: string; message: string; suggestio
     suggestions: [],
   },
   H1: {
-    agent: "Orchestrator",
-    message: "The Strategy agent has generated the CampaignPlan. Review the plan above — you can export it as JSON or view it as a presentation. I recommend discussing it before approving.",
+    agent: "Strategy",
+    message: "The Campaign Plan (Epic 1, A0-A5) is ready. This covers 5 RMB workstreams: Paid Media Strategy (A1-A2), HOL Customer Journey (A3), Email Strategy (A4), and Organic Social/HN Strategy (A5). I recommend discussing each workstream before approving at H1.",
     suggestions: [
-      "Why did you choose Meta as the hero channel?",
-      "What's the budget breakdown per channel?",
-      "How did you decide on 4 variants?",
-      "What are the projected KPIs?",
+      "Show me the paid media plan (channel mix, budget, KPIs)",
+      "What's the HOL customer journey?",
+      "Walk me through the email strategy",
+      "What's the organic social plan?",
     ],
   },
   content: {
@@ -63,14 +63,29 @@ export function AgentDiscussion() {
     // Simulate agent response
     setTimeout(() => {
       const responses: Record<string, string> = {
+        "paid media": `**Paid Media Plan (A1-A2):**\n\nHero channel: Meta paid-social (contractor segments index 3.2× higher vs LinkedIn).\n\nBudget: €142,500 total\n- 70% Meta (€100k): 4 campaigns × 4 ad sets × 4 creatives\n- 15% Creative production (€21k)\n- 10% Localization (€14k)\n- 5% Contingency (€7k)\n\nProjected KPIs: 1,861 conversions at €76.30 CPA, 4.35× ROAS, 2.8% CTR (benchmark: 2.1%).\n\nAudience: DACH contractors, site foremen, finishing crews, aged 28-55.\n\nKeywords: 80+ DE keywords (Google 50% / LinkedIn 30% / Meta 20% split).\n\nTesting roadmap: A/B test torque vs durability messaging in weeks 1-2, then scale winner.`,
+
+        "hol": `**HOL Customer Journey (A3):**\n\nThe campaign drives traffic to a dedicated promotional landing page on hilti.de (and .at, .ch, .li).\n\nEntry paths:\n1. Meta ad click → Promo LP with dealer locator CTA\n2. Google search → Product page with promo banner\n3. Direct type-in → Homepage hero banner → Promo LP\n4. Email click → Promo LP\n\nRequired assets:\n- 1 Promotional Landing Page (Contentful, Promo template)\n- 3 Hero banners (homepage, category page, product page)\n- 2 Hardcoded banners (registration flow, cart page)\n- Dealer locator deep-link integration\n\nAll assets rebuilt per MO space (Contentful constraint: no cross-space copy).`,
+
+        "email": `**Email Strategy (A4):**\n\nSegments:\n1. Active contractors (purchased power tools in last 12mo)\n2. Lapsed contractors (no purchase in 12+ mo)\n3. Specifiers/engineers (decision-makers, lower volume)\n\nSequence:\n- Email 1 (Launch): "The torque control you've been asking for" → Promo LP\n- Email 2 (Week 2): "See what DACH foremen are saying" → Social proof + case study\n- Email 3 (Week 4): "Last chance — 10% off ends Friday" → Urgency\n\nTesting: Subject line A/B test (technical vs emotional), send time optimization.\n\nRequires: SFMC automation + journey build, segmentation queries on Marketing Cloud Data Extensions.`,
+
+        "social": `**Organic Social & HN Strategy (A5):**\n\nHilti Owned Channels:\n- LinkedIn: 2 posts/week — technical deep-dive (torque control engineering) + jobsite story (foreman testimonial)\n- Instagram: 1 post/week — visual-first, jobsite photography, tool-in-action reels\n- YouTube: 1 video — 15s product demo (same as paid creative)\n\nHilti Network:\n- 3 posts across network partners\n- Localized per market (DE/AT/CH)\n- Format: 9×16 Stories, 1×1 Feed, 16×9 LinkedIn\n\nContent pillars: Precision, Durability, Productivity — same as Master Story.\n\nAll assets created on Figma, pushed to Sprinklr for scheduling.\n\nR2: Sprinklr direct access replaces social listening via online search.`,
+
         "why did you choose meta": `I chose Meta as the hero channel because contractor segments in DACH index 3.2× higher on Meta vs LinkedIn for power-tool campaigns (DACH_Meta_2025_Q3 benchmarks). Meta also offers better creative format flexibility for video + static combinations. LinkedIn would add ~€15k to reach the same audience size. If you want multi-channel, I can split 70/30 Meta/LinkedIn — would increase budget by ~€12k.`,
+
         "budget": `The €142,500 budget breaks down as: 70% Meta paid-social (€100k), 15% creative production (€21k), 10% localization (€14k), 5% contingency (€7k). Projected ROAS is 4.35× based on comparable DACH power-tool campaigns. If you want to reduce, I'd suggest cutting variants from 4 to 3 (saves ~€8k) rather than reducing media spend.`,
+
         "kpi": `Projected KPIs: 1,861 conversions at €76.30 CPA, 4.35× ROAS, 2.8% CTR (above the 2.1% DACH benchmark for industrial tools). These are plan projections — actual performance depends on creative quality and market conditions. I've built in a 15% variance buffer.`,
+
         "variant": `I chose 4 base variants to give statistical power for first-pass creative learning. Each variant tests a different angle: torque control (technical), runtime/battery life (practical), jobsite durability (emotional), and total cost of ownership (financial). With 4 variants × 4 locales = 16 total ads, we can identify which message resonates best per market within the first 2 weeks.`,
+
         "explain": `I generated 4 creative concepts focused on torque-control and dust-compliance for the DACH contractor segment. Each concept emphasizes a different value proposition: precision, durability, productivity, and platform compatibility. The brand voice follows Hilti v4.2 guidelines — no hype adjectives, technical-first messaging.`,
+
         "change": `Let me walk through the market-specific changes. For de-CH (Switzerland German), I swapped safety-led messaging for durability-led because CH contractor segments over-index on heritage and longevity cues (CH_Market_Heritage_Playbook_v2). For fr-CH, I did a full French translation while preserving SKU codes. de-AT is lexically identical to de-DE with no changes needed.`,
+
         "qa report": `Here's the QA summary: 15 of 16 variants passed all checks. Variant v_1_de-DE was flagged for using "revolutionäre" which is on the Hilti brand-voice blacklist for iterative hardware updates. The suggested replacement is "leistungsstarke" (high-performance). Would you like me to auto-fix it?`,
-      };
+
+      const q = text.toLowerCase();
       const q = text.toLowerCase();
       let response = "That's a great question. Let me look into the details and get back to you with specifics. In the meantime, would you like to review any other aspect of the ";
       response += phase === "H1" ? "plan?" : phase === "content" ? "creative concepts?" : "output?";

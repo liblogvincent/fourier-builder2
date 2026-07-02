@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { useWorkspace } from "@/store/workspace";
 import { useMemo, useState } from "react";
+import { RolloutAgent } from "@/components/media/RolloutAgent";
 import {
   brief as refBrief,
   plan as refPlan,
@@ -153,6 +154,9 @@ function MediaDashboard() {
             <span className="font-bold text-amber">Viewing reference:</span> camp_04 — Q4 Power-Tool Push, EU. {effectiveBrief.product} · {effectiveBrief.market} · {effectiveVariants.length} variants. This is a completed campaign shown as a template.
           </div>
         )}
+
+        {/* ── ROLLOUT & OPTIMIZATION AGENT (Epic 4+5) ── */}
+        <RolloutAgent />
 
         {/* ================================================================ */}
         {/* MEDIA PLAN OVERVIEW */}
