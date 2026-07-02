@@ -1,16 +1,31 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+let _supabase: SupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: { persistSession: true, autoRefreshToken: true },
-});
+function getSupabaseUrl() {
+  try { return import.meta.env.VITE_SUPABASE_URL || ""; } catch { return ""; }
+}
+function getSupabaseKey() {
+  try { return import.meta.env.VITE_SUPABASE_ANON_KEY || ""; } catch { return ""; }
+}
+
+function getClient(): SupabaseClient | null {
+  if (_supabase) return _supabase;
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
+  if (!url || !key) return null;
+  _supabase = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } });
+  return _supabase;
+}
+
+/** Lazy Supabase client — returns null if not configured */
+export function supabase(): SupabaseClient | null {
+  return getClient();
+}
 
 /** Check if Supabase is configured */
 export function isSupabaseConfigured(): boolean {
-  return Boolean(supabaseUrl && supabaseKey);
+  return Boolean(getSupabaseUrl() && getSupabaseKey());
 }
 
 let migrated = false;

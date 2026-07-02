@@ -8,7 +8,9 @@ import {
   qaResults as defaultQa,
   connectorCalls as defaultConn,
 } from "@/fixtures/camp_04";
-import { supabase, isSupabaseConfigured } from "./supabase";
+import { supabase as getSupabase, isSupabaseConfigured } from "./supabase";
+
+function db() { return getSupabase(); }
 
 // ---- localStorage fallback helpers (used when Supabase is not configured) ----
 function lsRead<T>(key: string, fallback: T): T {
@@ -34,7 +36,7 @@ interface CampaignState {
 // ---- Campaigns ----
 export async function listCampaigns(): Promise<Brief[]> {
   if (isSupabaseConfigured()) {
-    const { data } = await supabase.from("campaigns").select("brief").order("updated_at", { ascending: false });
+    const { data } = await db()?.from("campaigns").select("brief").order("updated_at", { ascending: false });
     const briefs = (data || []).map((r: any) => r.brief as Brief);
     if (!briefs.find((b) => b.id === defaultBrief.id)) briefs.push(defaultBrief);
     return briefs;
@@ -48,11 +50,11 @@ export async function listCampaigns(): Promise<Brief[]> {
 export async function saveCampaign(b: Brief) {
   if (isSupabaseConfigured()) {
     // Check if exists first, to preserve phase/state on update
-    const { data: existing } = await supabase.from("campaigns").select("phase,state").eq("id", b.id).maybeSingle();
+    const { data: existing } = await db()?.from("campaigns").select("phase,state").eq("id", b.id).maybeSingle();
     if (existing) {
-      await supabase.from("campaigns").update({ brief: b as any, updated_at: new Date().toISOString() }).eq("id", b.id);
+      await db()?.from("campaigns").update({ brief: b as any, updated_at: new Date().toISOString() }).eq("id", b.id);
     } else {
-      await supabase.from("campaigns").insert({ id: b.id, brief: b as any, phase: "brief", state: {}, updated_at: new Date().toISOString() });
+      await db()?.from("campaigns").insert({ id: b.id, brief: b as any, phase: "brief", state: {}, updated_at: new Date().toISOString() });
     }
     return;
   }
@@ -63,10 +65,10 @@ export async function saveCampaign(b: Brief) {
 // ---- Campaign working state ----
 export async function saveCampaignState(briefId: string, partial: Partial<CampaignState>) {
   if (isSupabaseConfigured()) {
-    const { data: existing } = await supabase.from("campaigns").select("state").eq("id", briefId).maybeSingle();
+    const { data: existing } = await db()?.from("campaigns").select("state").eq("id", briefId).maybeSingle();
     const current = (existing?.state || {}) as CampaignState;
     const merged = { ...current, ...partial };
-    await supabase.from("campaigns").update({ state: merged as any, updated_at: new Date().toISOString() }).eq("id", briefId);
+    await db()?.from("campaigns").update({ state: merged as any, updated_at: new Date().toISOString() }).eq("id", briefId);
     return;
   }
   const key = "luban.state." + briefId;
@@ -76,7 +78,7 @@ export async function saveCampaignState(briefId: string, partial: Partial<Campai
 
 export async function loadCampaignState(briefId: string): Promise<Partial<CampaignState>> {
   if (isSupabaseConfigured()) {
-    const { data } = await supabase.from("campaigns").select("state").eq("id", briefId).maybeSingle();
+    const { data } = await db()?.from("campaigns").select("state").eq("id", briefId).maybeSingle();
     return (data?.state || {}) as Partial<CampaignState>;
   }
   return lsRead<Partial<CampaignState>>("luban.state." + briefId, {});
@@ -85,7 +87,7 @@ export async function loadCampaignState(briefId: string): Promise<Partial<Campai
 // ---- Per-campaign phase ----
 export async function getBriefPhase(id: string): Promise<string | null> {
   if (isSupabaseConfigured()) {
-    const { data } = await supabase.from("campaigns").select("phase").eq("id", id).maybeSingle();
+    const { data } = await db()?.from("campaigns").select("phase").eq("id", id).maybeSingle();
     return data?.phase ?? null;
   }
   const map = lsRead<Record<string, string>>("luban.campaign_phases", {});
@@ -94,7 +96,7 @@ export async function getBriefPhase(id: string): Promise<string | null> {
 
 export async function setBriefPhase(id: string, phase: string) {
   if (isSupabaseConfigured()) {
-    await supabase.from("campaigns").update({ phase, updated_at: new Date().toISOString() }).eq("id", id);
+    await db()?.from("campaigns").update({ phase, updated_at: new Date().toISOString() }).eq("id", id);
     return;
   }
   const map = lsRead<Record<string, string>>("luban.campaign_phases", {});
@@ -103,7 +105,7 @@ export async function setBriefPhase(id: string, phase: string) {
 
 export async function getAllBriefPhases(): Promise<Record<string, string>> {
   if (isSupabaseConfigured()) {
-    const { data } = await supabase.from("campaigns").select("id,phase");
+    const { data } = await db()?.from("campaigns").select("id,phase");
     const map: Record<string, string> = {};
     for (const r of (data || [])) map[r.id] = r.phase;
     return map;
@@ -114,7 +116,7 @@ export async function getAllBriefPhases(): Promise<Record<string, string>> {
 // ---- Runs / Evals ----
 export async function listRuns(): Promise<EvalPoint[]> {
   if (isSupabaseConfigured()) {
-    const { data } = await supabase.from("runs").select("data").order("created_at");
+    const { data } = await db()?.from("runs").select("data").order("created_at");
     const saved = (data || []).map((r: any) => r.data as EvalPoint);
     const merged = [...seedEvals, ...saved];
     return merged.map((p, i) => ({ ...p, campaignNumber: i + 1 }));
@@ -126,7 +128,7 @@ export async function listRuns(): Promise<EvalPoint[]> {
 
 export async function recordRun(point: Omit<EvalPoint, "campaignNumber">) {
   if (isSupabaseConfigured()) {
-    await supabase.from("runs").insert({ data: point as any });
+    await db()?.from("runs").insert({ data: point as any });
     return;
   }
   const saved = lsRead<EvalPoint[]>("luban.runs", []);
@@ -136,7 +138,7 @@ export async function recordRun(point: Omit<EvalPoint, "campaignNumber">) {
 // ---- Skills registry ----
 export async function listSkills(): Promise<RegistryArtifact[]> {
   if (isSupabaseConfigured()) {
-    const { data } = await supabase.from("skills").select("data").order("created_at");
+    const { data } = await db()?.from("skills").select("data").order("created_at");
     const saved = (data || []).map((r: any) => r.data as RegistryArtifact);
     const seen = new Set(seedRegistry.map((r) => r.id));
     return [...seedRegistry, ...saved.filter((s) => !seen.has(s.id))];
@@ -148,7 +150,7 @@ export async function listSkills(): Promise<RegistryArtifact[]> {
 
 export async function promoteSkill(s: RegistryArtifact) {
   if (isSupabaseConfigured()) {
-    await supabase.from("skills").upsert({ id: s.id, data: s as any, updated_at: new Date().toISOString() });
+    await db()?.from("skills").upsert({ id: s.id, data: s as any, updated_at: new Date().toISOString() });
     return;
   }
   const saved = lsRead<RegistryArtifact[]>("luban.skills", []);
@@ -168,9 +170,9 @@ export function setRole(r: StoredRole) {
 // ---- Seed camp_04 ----
 export async function seedCamp04() {
   if (isSupabaseConfigured()) {
-    const { data } = await supabase.from("campaigns").select("id").eq("id", defaultBrief.id).maybeSingle();
+    const { data } = await db()?.from("campaigns").select("id").eq("id", defaultBrief.id).maybeSingle();
     if (!data) {
-      await supabase.from("campaigns").insert({
+      await db()?.from("campaigns").insert({
         id: defaultBrief.id,
         brief: defaultBrief as any,
         phase: "done",
