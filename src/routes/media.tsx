@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { WorkspaceShell } from "@/components/WorkspaceShell";
+import { AgentCanvasShell } from "@/components/AgentCanvasShell";
 import { useWorkspace } from "@/store/workspace";
 import { useMemo, useState } from "react";
 import { RolloutAgent } from "@/components/media/RolloutAgent";
@@ -54,7 +54,7 @@ function MediaDashboard() {
   // Guard: no active campaign (unless showing reference)
   if (phase === "brief" && effectiveBrief.campaign === "New Campaign" && !showReference) {
     return (
-      <WorkspaceShell>
+      <AgentCanvasShell agent={null} canvas={null}>
         <div className="mx-auto w-full max-w-5xl px-6 py-20 text-center">
           <p className="text-sm text-muted-foreground">No active campaign. Start a campaign first to see the media plan.</p>
           <button
@@ -120,8 +120,10 @@ function MediaDashboard() {
   }, [hasVariants, effectiveVariants, effectiveBrief.id, effectiveQaResults]);
 
   return (
-    <WorkspaceShell>
-      <div className="mx-auto w-full max-w-5xl space-y-6 px-6 py-6">
+    <AgentCanvasShell
+      agent={<RolloutAgent />}
+      canvas={
+        <div className="mx-auto w-full max-w-3xl space-y-6 px-6 py-6">
         {/* Header */}
         <header>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Media Workspace</p>
@@ -155,12 +157,7 @@ function MediaDashboard() {
           </div>
         )}
 
-        {/* ── ROLLOUT & OPTIMIZATION AGENT (Epic 4+5) ── */}
-        <RolloutAgent />
-
-        {/* ================================================================ */}
-        {/* MEDIA PLAN OVERVIEW */}
-        {/* ================================================================ */}
+        {/* ── MEDIA PLAN OVERVIEW ── */}
         <section>
           <h2 className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Media Plan Overview</h2>
           {hasPlan && effectiveStrategyRationale ? (
@@ -407,6 +404,7 @@ function MediaDashboard() {
           </div>
         </section>
       </div>
-    </WorkspaceShell>
+      }
+    />
   );
 }

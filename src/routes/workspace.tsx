@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { WorkspaceShell } from "@/components/WorkspaceShell";
+import { AgentCanvasShell } from "@/components/AgentCanvasShell";
 import { useWorkspace } from "@/store/workspace";
 import { BriefCard } from "@/components/timeline/BriefCard";
 import { PlanCard } from "@/components/timeline/PlanCard";
@@ -38,30 +38,26 @@ function Workspace() {
   const phase = useWorkspace((s) => s.phase);
 
   return (
-    <WorkspaceShell>
-      <div className="mx-auto w-full max-w-4xl space-y-6 px-8 py-8">
-        <AgentDiscussion />
-
-        <BriefCard />
-
-        {reached(phase, "planning") && <PlanCard />}
-        {phase === "H1" && <GatePanel gate="H1" />}
-
-        {reached(phase, "content") && <ContentSection />}
-        {reached(phase, "localization") && <LocaleDiff />}
-        {reached(phase, "qa") && <QaPanel />}
-        {phase === "H2" && <GatePanel gate="H2" />}
-        {phase === "H-legal" && <GatePanel gate="H-legal" />}
-
-        {reached(phase, "rollout") && <RolloutStatus />}
-        {phase === "H3" && <GatePanel gate="H3" />}
-
-        {reached(phase, "live") && <LiveTile />}
-        {reached(phase, "H4") && <InsightProposal />}
-        {phase === "H4" && <GatePanel gate="H4" />}
-
-        {phase === "done" && <ValueReadout />}
-      </div>
-    </WorkspaceShell>
+    <AgentCanvasShell
+      agent={<AgentDiscussion />}
+      canvas={
+        <div className="mx-auto w-full max-w-3xl space-y-4 px-6 py-6">
+          <BriefCard />
+          {reached(phase, "planning") && <PlanCard />}
+          {phase === "H1" && <GatePanel gate="H1" />}
+          {reached(phase, "content") && <ContentSection />}
+          {reached(phase, "localization") && <LocaleDiff />}
+          {reached(phase, "qa") && <QaPanel />}
+          {phase === "H2" && <GatePanel gate="H2" />}
+          {phase === "H-legal" && <GatePanel gate="H-legal" />}
+          {reached(phase, "rollout") && <RolloutStatus />}
+          {phase === "H3" && <GatePanel gate="H3" />}
+          {reached(phase, "live") && <LiveTile />}
+          {reached(phase, "H4") && <InsightProposal />}
+          {phase === "H4" && <GatePanel gate="H4" />}
+          {phase === "done" && <ValueReadout />}
+        </div>
+      }
+    />
   );
 }
