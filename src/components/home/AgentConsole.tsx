@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useNavigate } from "@tanstack/react-router";
-import { useWorkspace } from "@/store/workspace";
+import { useWorkspace, phaseLabel } from "@/store/workspace";
 import { listCampaigns } from "@/lib/persistence";
 import type { GateId } from "@/types";
 import { Send, Sparkles } from "lucide-react";
@@ -21,26 +21,41 @@ export function AgentConsole() {
   const phase = useWorkspace((s) => s.phase);
   const brief = useWorkspace((s) => s.brief);
   const agentBusy = useWorkspace((s) => s.agentBusy);
-  const stream = useWorkspace((s) => s.rationaleStream);
+  const rationaleStream = useWorkspace((s) => s.rationaleStream);
+  const gateDecisions = useWorkspace((s) => s.gateDecisions);
+  const variants = useWorkspace((s) => s.variants);
+  const qaResults = useWorkspace((s) => s.qaResults);
+  const runMode = useWorkspace((s) => s.runMode);
   const advance = useWorkspace((s) => s.advance);
   const decideGate = useWorkspace((s) => s.decideGate);
   const loadBrief = useWorkspace((s) => s.loadBrief);
   const reset = useWorkspace((s) => s.reset);
 
-  const lastRationale = stream[stream.length - 1];
+  const lastRationale = rationaleStream[rationaleStream.length - 1];
   const [input, setInput] = useState("");
   const handledRef = useRef<Set<string>>(new Set());
 
   const context = useMemo(
     () => ({
       campaign: brief.campaign,
-      phase,
+      product: brief.product,
       market: brief.market,
       locales: brief.locales,
+      currentPhase: phase,
+      phaseLabel: phaseLabel(phase),
+      gatesPassed: Object.entries(gateDecisions)
+        .filter(([, d]) => d.verdict === "approved")
+        .map(([g]) => g),
+      gatesPending: [],
+      variantCount: variants.length,
+      qaSummary: `${qaResults.filter((r) => r.judge.verdict === "pass").length}/${qaResults.length} passing`,
+      lastRationale: rationaleStream.length > 0
+        ? rationaleStream[rationaleStream.length - 1].decided
+        : null,
       agentBusy,
-      lastRationale: lastRationale?.decided,
+      runMode,
     }),
-    [brief.campaign, brief.market, brief.locales, phase, agentBusy, lastRationale?.decided],
+    [brief, phase, gateDecisions, variants, qaResults, rationaleStream, agentBusy, runMode],
   );
 
   const transport = useMemo(
