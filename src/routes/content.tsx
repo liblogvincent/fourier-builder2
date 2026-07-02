@@ -9,7 +9,7 @@ import { FigmaPushPanel } from "@/components/content/FigmaPushPanel";
 import { AgencyUploadZone } from "@/components/content/AgencyUploadZone";
 import { openPptxInNewTab } from "@/lib/html-pptx";
 import { listSkills } from "@/lib/persistence";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   brief as refBrief,
   plan as refPlan,
@@ -33,9 +33,11 @@ function ContentDashboard() {
   const rationaleStream = useWorkspace((s) => s.rationaleStream);
 
   const contentRationale = useMemo(() => rationaleStream.filter((r) => r.agent === "content").at(-1), [rationaleStream]);
-  const brandGuidelines: RegistryArtifact[] = useMemo(() => {
-    try { return listSkills().filter((s) => s.status === "Approved" && (s.type === "Guideline" || s.type === "Rule")); }
-    catch { return []; }
+  const [brandGuidelines, setBrandGuidelines] = useState<RegistryArtifact[]>([]);
+  useEffect(() => {
+    listSkills().then((skills) => {
+      setBrandGuidelines(skills.filter((s) => s.status === "Approved" && (s.type === "Guideline" || s.type === "Rule")));
+    }).catch(() => setBrandGuidelines([]));
   }, []);
 
   const hasContent = variants.length > 0;

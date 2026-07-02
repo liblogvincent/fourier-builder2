@@ -8,14 +8,20 @@ import {
   qaResults as defaultQa,
   connectorCalls as defaultConn,
 } from "@/fixtures/camp_04";
+import { supabase, isSupabaseConfigured } from "./supabase";
 
-const CAMPAIGNS_KEY = "luban.campaigns";
-const RUNS_KEY = "luban.runs";
-const SKILLS_KEY = "luban.skills";
-const PHASES_KEY = "luban.campaign_phases";
-const ROLE_KEY = "luban.role";
-const STATE_PREFIX = "luban.state.";
+// ---- localStorage fallback helpers (used when Supabase is not configured) ----
+function lsRead<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; }
+  catch { return fallback; }
+}
+function lsWrite<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* quota */ }
+}
 
+// ---- Campaign state shape ----
 interface CampaignState {
   plan: CampaignPlan;
   variants: AdVariant[];
@@ -25,109 +31,166 @@ interface CampaignState {
   gateDecisions: Record<string, GateDecision>;
 }
 
-function safeRead<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function safeWrite<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* quota */
-  }
-}
-
 // ---- Campaigns ----
-export function listCampaigns(): Brief[] {
-  const saved = safeRead<Brief[]>(CAMPAIGNS_KEY, []);
-  if (!saved.find((b) => b.id === defaultBrief.id)) {
-    return [defaultBrief, ...saved];
+export async function listCampaigns(): Promise<Brief[]> {
+  if (isSupabaseConfigured()) {
+    const { data } = await supabase.from("campaigns").select("brief").order("updated_at", { ascending: false });
+    const briefs = (data || []).map((r: any) => r.brief as Brief);
+    if (!briefs.find((b) => b.id === defaultBrief.id)) briefs.push(defaultBrief);
+    return briefs;
   }
+  // localStorage fallback
+  const saved = lsRead<Brief[]>("luban.campaigns", []);
+  if (!saved.find((b) => b.id === defaultBrief.id)) return [defaultBrief, ...saved];
   return saved;
 }
 
-export function saveCampaign(b: Brief) {
-  const all = safeRead<Brief[]>(CAMPAIGNS_KEY, []);
-  const next = [b, ...all.filter((x) => x.id !== b.id)];
-  safeWrite(CAMPAIGNS_KEY, next);
+export async function saveCampaign(b: Brief) {
+  if (isSupabaseConfigured()) {
+    // Check if exists first, to preserve phase/state on update
+    const { data: existing } = await supabase.from("campaigns").select("phase,state").eq("id", b.id).maybeSingle();
+    if (existing) {
+      await supabase.from("campaigns").update({ brief: b as any, updated_at: new Date().toISOString() }).eq("id", b.id);
+    } else {
+      await supabase.from("campaigns").insert({ id: b.id, brief: b as any, phase: "brief", state: {}, updated_at: new Date().toISOString() });
+    }
+    return;
+  }
+  const all = lsRead<Brief[]>("luban.campaigns", []);
+  lsWrite("luban.campaigns", [b, ...all.filter((x) => x.id !== b.id)]);
+}
+
+// ---- Campaign working state ----
+export async function saveCampaignState(briefId: string, partial: Partial<CampaignState>) {
+  if (isSupabaseConfigured()) {
+    const { data: existing } = await supabase.from("campaigns").select("state").eq("id", briefId).maybeSingle();
+    const current = (existing?.state || {}) as CampaignState;
+    const merged = { ...current, ...partial };
+    await supabase.from("campaigns").update({ state: merged as any, updated_at: new Date().toISOString() }).eq("id", briefId);
+    return;
+  }
+  const key = "luban.state." + briefId;
+  const existing = lsRead<CampaignState>(key, {} as CampaignState);
+  lsWrite(key, { ...existing, ...partial });
+}
+
+export async function loadCampaignState(briefId: string): Promise<Partial<CampaignState>> {
+  if (isSupabaseConfigured()) {
+    const { data } = await supabase.from("campaigns").select("state").eq("id", briefId).maybeSingle();
+    return (data?.state || {}) as Partial<CampaignState>;
+  }
+  return lsRead<Partial<CampaignState>>("luban.state." + briefId, {});
+}
+
+// ---- Per-campaign phase ----
+export async function getBriefPhase(id: string): Promise<string | null> {
+  if (isSupabaseConfigured()) {
+    const { data } = await supabase.from("campaigns").select("phase").eq("id", id).maybeSingle();
+    return data?.phase ?? null;
+  }
+  const map = lsRead<Record<string, string>>("luban.campaign_phases", {});
+  return map[id] ?? null;
+}
+
+export async function setBriefPhase(id: string, phase: string) {
+  if (isSupabaseConfigured()) {
+    await supabase.from("campaigns").update({ phase, updated_at: new Date().toISOString() }).eq("id", id);
+    return;
+  }
+  const map = lsRead<Record<string, string>>("luban.campaign_phases", {});
+  lsWrite("luban.campaign_phases", { ...map, [id]: phase });
+}
+
+export async function getAllBriefPhases(): Promise<Record<string, string>> {
+  if (isSupabaseConfigured()) {
+    const { data } = await supabase.from("campaigns").select("id,phase");
+    const map: Record<string, string> = {};
+    for (const r of (data || [])) map[r.id] = r.phase;
+    return map;
+  }
+  return lsRead<Record<string, string>>("luban.campaign_phases", {});
 }
 
 // ---- Runs / Evals ----
-export function listRuns(): EvalPoint[] {
-  const saved = safeRead<EvalPoint[]>(RUNS_KEY, []);
-  // seed + user runs; renumber sequentially
+export async function listRuns(): Promise<EvalPoint[]> {
+  if (isSupabaseConfigured()) {
+    const { data } = await supabase.from("runs").select("data").order("created_at");
+    const saved = (data || []).map((r: any) => r.data as EvalPoint);
+    const merged = [...seedEvals, ...saved];
+    return merged.map((p, i) => ({ ...p, campaignNumber: i + 1 }));
+  }
+  const saved = lsRead<EvalPoint[]>("luban.runs", []);
   const merged = [...seedEvals, ...saved];
   return merged.map((p, i) => ({ ...p, campaignNumber: i + 1 }));
 }
 
-export function recordRun(point: Omit<EvalPoint, "campaignNumber">) {
-  const saved = safeRead<EvalPoint[]>(RUNS_KEY, []);
-  safeWrite(RUNS_KEY, [...saved, { ...point, campaignNumber: 0 }]);
+export async function recordRun(point: Omit<EvalPoint, "campaignNumber">) {
+  if (isSupabaseConfigured()) {
+    await supabase.from("runs").insert({ data: point as any });
+    return;
+  }
+  const saved = lsRead<EvalPoint[]>("luban.runs", []);
+  lsWrite("luban.runs", [...saved, { ...point, campaignNumber: 0 }]);
 }
 
 // ---- Skills registry ----
-export function listSkills(): RegistryArtifact[] {
-  const saved = safeRead<RegistryArtifact[]>(SKILLS_KEY, []);
+export async function listSkills(): Promise<RegistryArtifact[]> {
+  if (isSupabaseConfigured()) {
+    const { data } = await supabase.from("skills").select("data").order("created_at");
+    const saved = (data || []).map((r: any) => r.data as RegistryArtifact);
+    const seen = new Set(seedRegistry.map((r) => r.id));
+    return [...seedRegistry, ...saved.filter((s) => !seen.has(s.id))];
+  }
+  const saved = lsRead<RegistryArtifact[]>("luban.skills", []);
   const seen = new Set(seedRegistry.map((r) => r.id));
   return [...seedRegistry, ...saved.filter((s) => !seen.has(s.id))];
 }
 
-export function promoteSkill(s: RegistryArtifact) {
-  const saved = safeRead<RegistryArtifact[]>(SKILLS_KEY, []);
+export async function promoteSkill(s: RegistryArtifact) {
+  if (isSupabaseConfigured()) {
+    await supabase.from("skills").upsert({ id: s.id, data: s as any, updated_at: new Date().toISOString() });
+    return;
+  }
+  const saved = lsRead<RegistryArtifact[]>("luban.skills", []);
   if (saved.find((x) => x.id === s.id)) return;
-  safeWrite(SKILLS_KEY, [...saved, s]);
+  lsWrite("luban.skills", [...saved, s]);
 }
 
-// ---- Per-campaign phase (for Home dashboard progress) ----
-export function getBriefPhase(id: string): string | null {
-  const map = safeRead<Record<string, string>>(PHASES_KEY, {});
-  return map[id] ?? null;
-}
-
-export function setBriefPhase(id: string, phase: string) {
-  const map = safeRead<Record<string, string>>(PHASES_KEY, {});
-  safeWrite(PHASES_KEY, { ...map, [id]: phase });
-}
-
-export function getAllBriefPhases(): Record<string, string> {
-  return safeRead<Record<string, string>>(PHASES_KEY, {});
-}
-
-// ---- Role (local UI filter) ----
+// ---- Role ----
 export type StoredRole = "campaign_manager" | "legal" | "market_lead" | "brand_qa";
 export function getRole(): StoredRole {
-  return safeRead<StoredRole>(ROLE_KEY, "campaign_manager");
+  return lsRead<StoredRole>("luban.role", "campaign_manager");
 }
 export function setRole(r: StoredRole) {
-  safeWrite(ROLE_KEY, r);
+  lsWrite("luban.role", r);
 }
 
-// ---- Campaign working state (variants, plan, QA, etc.) ----
-export function saveCampaignState(briefId: string, state: Partial<CampaignState>) {
-  const key = STATE_PREFIX + briefId;
-  const existing = safeRead<CampaignState>(key, {} as CampaignState);
-  safeWrite(key, { ...existing, ...state });
-}
-
-export function loadCampaignState(briefId: string): Partial<CampaignState> {
-  const key = STATE_PREFIX + briefId;
-  return safeRead<Partial<CampaignState>>(key, {});
-}
-
-// ---- Seed camp_04 as a permanent saved campaign ----
-export function seedCamp04() {
-  const campaigns = safeRead<Brief[]>(CAMPAIGNS_KEY, []);
+// ---- Seed camp_04 ----
+export async function seedCamp04() {
+  if (isSupabaseConfigured()) {
+    const { data } = await supabase.from("campaigns").select("id").eq("id", defaultBrief.id).maybeSingle();
+    if (!data) {
+      await supabase.from("campaigns").insert({
+        id: defaultBrief.id,
+        brief: defaultBrief as any,
+        phase: "done",
+        state: {
+          plan: defaultPlan,
+          variants: defaultVariants,
+          qaResults: defaultQa,
+          connectorCalls: defaultConn,
+          rationaleStream: [],
+          gateDecisions: {},
+        } as any,
+        updated_at: new Date().toISOString(),
+      });
+    }
+    return;
+  }
+  // localStorage fallback
+  const campaigns = lsRead<Brief[]>("luban.campaigns", []);
   if (!campaigns.find((b) => b.id === defaultBrief.id)) {
     saveCampaign(defaultBrief);
-    // Also seed the demo state so Content/Media pages show data
     saveCampaignState(defaultBrief.id, {
       plan: defaultPlan,
       variants: defaultVariants,

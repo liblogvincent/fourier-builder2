@@ -136,29 +136,40 @@ export const useWorkspace = create<State>((set, get) => ({
   },
 
   loadBrief: (b) => {
-    // Persist the brief to localStorage
+    // Persist async (fire-and-forget)
     saveCampaign(b);
-    // Restore saved working state if it exists
-    const savedState = loadCampaignState(b.id);
-    // Restore last-known phase
-    const savedPhase = getBriefPhase(b.id) as Phase | null;
+    // Set initial state synchronously, then hydrate from DB
     set({
       brief: b,
-      phase: savedPhase ?? "brief",
-      rationaleStream: savedState.rationaleStream ?? [],
-      gateDecisions: savedState.gateDecisions ?? {},
+      phase: "brief",
+      rationaleStream: [],
+      gateDecisions: {},
       appliedFixes: new Set(),
       proposalDisposition: "pending",
       campaignStarted: true,
       revisionFeedback: null,
-      plan: savedState.plan ?? { ...defaultPlan, briefId: b.id },
-      variants: savedState.variants ?? (b.id === defaultBrief.id ? defaultVariants : []),
+      plan: { ...defaultPlan, briefId: b.id },
+      variants: b.id === defaultBrief.id ? defaultVariants : [],
       localeDiffs: defaultDiffs,
-      qaResults: savedState.qaResults ?? (b.id === defaultBrief.id ? defaultQa : []),
-      connectorCalls: savedState.connectorCalls ?? (b.id === defaultBrief.id ? defaultConn : []),
+      qaResults: b.id === defaultBrief.id ? defaultQa : [],
+      connectorCalls: b.id === defaultBrief.id ? defaultConn : [],
       proposal: defaultProposal,
       agentBusy: null,
       agentError: null,
+    });
+    // Async: restore saved state and phase
+    Promise.all([loadCampaignState(b.id), getBriefPhase(b.id)]).then(([savedState, savedPhase]) => {
+      if (savedState && Object.keys(savedState).length > 0) {
+        set({
+          phase: (savedPhase as Phase) ?? "brief",
+          plan: savedState.plan ?? { ...defaultPlan, briefId: b.id },
+          variants: savedState.variants ?? [],
+          qaResults: savedState.qaResults ?? [],
+          connectorCalls: savedState.connectorCalls ?? [],
+          rationaleStream: savedState.rationaleStream ?? [],
+          gateDecisions: savedState.gateDecisions ?? {},
+        });
+      }
     });
   },
 
@@ -176,7 +187,7 @@ export const useWorkspace = create<State>((set, get) => ({
       budget_usd: 0,
       assumptions: [],
     };
-    saveCampaign(b);
+    saveCampaign(b); // fire-and-forget async
     set({
       phase: "brief",
       rationaleStream: [],
@@ -380,7 +391,7 @@ async function executePhase(
       summary: last?.decided,
       rationaleId: last?.id,
     });
-    // Persist working state after each agent phase
+    // Persist working state after each agent phase (fire-and-forget)
     const s = get();
     saveCampaignState(briefId, {
       plan: s.plan,
@@ -650,8 +661,8 @@ function anyBrief(b: Brief) {
 export const isGatePhase = (p: Phase): p is "H1" | "H2" | "H-legal" | "H3" | "H4" =>
   p === "H1" || p === "H2" || p === "H-legal" || p === "H3" || p === "H4";
 
-// Seed camp_04 as a permanent saved campaign on first load (runs once in browser)
-try { seedCamp04(); } catch { /* SSR-safe */ }
+// Seed camp_04 as a permanent saved campaign on first load (async, SSR-safe)
+if (typeof window !== "undefined") { seedCamp04().catch(() => {}); }
 
 export const phaseLabel = (p: Phase): string =>
   ({
