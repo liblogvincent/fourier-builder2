@@ -28,7 +28,8 @@ import {
   runQa,
   runInsights,
 } from "@/lib/agents.functions";
-import { promoteSkill, recordRun, setBriefPhase } from "@/lib/persistence";
+import { listSkills, promoteSkill, recordRun, setBriefPhase } from "@/lib/persistence";
+import { getRelevantSkills } from "@/lib/skills-context";
 import {
   appendRunEvent,
   nextAttempt,
@@ -353,6 +354,8 @@ async function runLiveAgent(
   if (next === "planning") {
     set({ agentBusy: "strategy", agentError: null });
     const b = get().brief;
+    const skills = listSkills();
+    const skillsCtx = getRelevantSkills(skills, "strategy", b.market);
     const r = await runStrategy({
       data: {
         campaign: b.campaign,
@@ -363,6 +366,7 @@ async function runLiveAgent(
         channel: b.channels[0] ?? "meta",
         locales: b.locales,
         budget_usd: b.budget_usd,
+        skillsContext: skillsCtx,
       },
     });
     const rationale: DecisionRationale = {
@@ -388,7 +392,9 @@ async function runLiveAgent(
     set({ agentBusy: "content", agentError: null });
     const b = get().brief;
     const baseLocale = b.locales[0];
-    const out = await runContent({ data: { brief: anyBrief(b), n: 4 } });
+    const skills = listSkills();
+    const skillsCtx = getRelevantSkills(skills, "content", b.market);
+    const out = await runContent({ data: { brief: anyBrief(b), n: 4, skillsContext: skillsCtx } });
     const variants: AdVariant[] = out.variants.map((v, idx) => ({
       id: `v_${idx + 1}_${baseLocale}`,
       channel: "meta",
@@ -423,6 +429,8 @@ async function runLiveAgent(
       set({ agentBusy: null });
       return;
     }
+    const skills = listSkills();
+    const skillsCtx = getRelevantSkills(skills, "localization", b.market);
     const newVariants: AdVariant[] = [...base];
     const allDiffs: LocaleDiffEntry[] = [];
     for (const src of base) {
@@ -435,6 +443,7 @@ async function runLiveAgent(
             cta: src.cta,
           },
           targetLocales: targets,
+          skillsContext: skillsCtx,
         },
       });
       for (const lv of out.localized) {
@@ -469,6 +478,8 @@ async function runLiveAgent(
   if (next === "qa") {
     set({ agentBusy: "qa", agentError: null });
     const variants = get().variants;
+    const skills = listSkills();
+    const skillsCtx = getRelevantSkills(skills, "qa", get().brief.market);
     const out = await runQa({
       data: {
         variants: variants.map((v) => ({
@@ -477,6 +488,7 @@ async function runLiveAgent(
           headline: v.headline,
           primary_text: v.primary_text,
         })),
+        skillsContext: skillsCtx,
       },
     });
     const qa: QAResult[] = variants.map((v) => {
@@ -534,6 +546,8 @@ async function runLiveAgent(
       get().pushRationale(rationaleScript.insights);
       return;
     }
+    const skills = listSkills();
+    const skillsCtx = getRelevantSkills(skills, "insights", get().brief.market);
     const out = await runInsights({
       data: {
         campaignId: get().brief.id,
@@ -542,6 +556,7 @@ async function runLiveAgent(
           flagged_phrase: f.judge.flagged_phrase ?? "",
           reason: f.judge.reason ?? "",
         })),
+        skillsContext: skillsCtx,
       },
     });
     const proposal: SkillProposal = {
