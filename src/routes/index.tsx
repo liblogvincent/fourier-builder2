@@ -71,6 +71,14 @@ function Home() {
               >
                 ▶ Run Demo
               </button>
+              <a
+                href="https://github.com/liblogvincent/luban/blob/main/docs/Fourier-User-Handbook.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-sm border border-border bg-white px-4 py-2 text-sm font-bold hover:bg-black/5"
+              >
+                📖 User Handbook
+              </a>
             </div>
           </div>
         ) : (
